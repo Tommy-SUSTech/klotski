@@ -71,12 +71,12 @@ public int moveCount:           how many moves we have made
 
 Methods:
 initialize():                   re-initialize the game
-applyAction(int[2] position):   apply action (position as coordinate position[0] position[1])
+applyAction(int[2] from. int[2] to):   apply action (position as coordinate position[0] position[1])
     Modifies: this.moveCount
-applyAction(int position):      apply action (position as index).
+applyAction(int from, int to):      apply action (position as index).
     Modifies: this.moveCount
-isLegalAction(int[2] position): return true when the action is valid
-isLegalAction(int position):    return true when the action is valid
+isLegalAction(int[2] from, int[2] to): return true when the action is valid
+isLegalAction(int from, int to):    return true when the action is valid
 getLegalAtions():               return all legal actions as list of positions coordinates
 @Override toString():           return the board with piece abbreviations as string
 private coordinateToIndex(coordinate): return index of the coordinate.

@@ -41,7 +41,7 @@ public class KlotskiGame {
         public final char abbreviation;
         public final int width;
         public final int height;
-        private int[] position; // [row, col]
+        public int[] position; // [row, col]
 
         public KlotskiPiece(int id, String name, char abbreviation, int width, int height, int[] position) {
             this.id = id;
@@ -77,8 +77,8 @@ public class KlotskiGame {
     
     private KlotskiPiece[] pieces;
     private int moveCount;
-    private static final int BOARD_WIDTH = 4;
-    private static final int BOARD_HEIGHT = 5;
+    public static final int BOARD_WIDTH = 4;
+    public static final int BOARD_HEIGHT = 5;
 
     public KlotskiGame() {
         initialize();
@@ -87,6 +87,7 @@ public class KlotskiGame {
     public void initialize() {
         pieces = new KlotskiPiece[10];
         // Cao Cao (2x2) (row x col)
+        // Cao Cao should always have id = 0
         pieces[0] = new KlotskiPiece(0, "Cao Cao", 'C', 2, 2, new int[]{0, 1});
         // Guan Yu (2x1)
         pieces[1] = new KlotskiPiece(1, "Guan Yu", 'Y', 2, 1, new int[]{3, 1});
@@ -154,8 +155,16 @@ public class KlotskiGame {
         
         return true;
     }
+    
+    public boolean isTerminal() {
+        KlotskiPiece piece = getPieceAt(new int[] {4, 1});
+        if (piece.id == 0 || piece.name == "Cao Cao") {
+            return true;
+        }
+        return false;
+    }
 
-    private boolean overlaps(KlotskiPiece piece, int[] position, int width, int height) {
+    public static boolean overlaps(KlotskiPiece piece, int[] position, int width, int height) {
         return !(position[0] >= piece.position[0] + piece.height ||
                 position[0] + height <= piece.position[0] ||
                 position[1] >= piece.position[1] + piece.width ||
@@ -227,7 +236,7 @@ public class KlotskiGame {
             }
             sb.append('\n');
         }
-        sb.append("Move count: ").append(moveCount);
+        // sb.append("Move count: ").append(moveCount);
         return sb.toString();
     }
 
@@ -245,8 +254,8 @@ public class KlotskiGame {
         
         System.out.println("Welcome to Klotski Game!");
         System.out.println("Commands:");
-        System.out.println("  move [fromRow] [fromCol] [toRow] [toCol] - Move piece from (fromRow,fromCol) to (toRow,toCol)");
-        System.out.println("  moves [row] [col] - Show possible moves for piece at (row,col)");
+        System.out.println("  move - Show pieces with legal moves");
+        System.out.println("  move [row] [col] - Move piece at (row,col)");
         System.out.println("  restart - Reset the game");
         System.out.println("  exit - Quit the game");
         System.out.println("Current board:");
@@ -263,65 +272,102 @@ public class KlotskiGame {
                 game.initialize();
                 System.out.println("Game restarted. Current board:");
                 System.out.println(game);
-            } else if (input.startsWith("move ")) {
+            } else if (input.startsWith("move")) {
                 try {
                     String[] parts = input.split(" ");
-                    if (parts.length != 5) {
-                        System.out.println("Invalid command. Usage: move [fromRow] [fromCol] [toRow] [toCol]");
-                        continue;
-                    }
-                    int fromRow = Integer.parseInt(parts[1]);
-                    int fromCol = Integer.parseInt(parts[2]);
-                    int toRow = Integer.parseInt(parts[3]);
-                    int toCol = Integer.parseInt(parts[4]);
                     
-                    if (game.isLegalMove(new int[]{fromRow, fromCol}, new int[]{toRow, toCol})) {
-                        game.applyAction(new int[]{fromRow, fromCol}, new int[]{toRow, toCol});
-                        System.out.println("Move applied. Current board:");
-                        System.out.println(game);
+                    if (parts.length == 1) {
+                        // Case: "move" - show all pieces with legal moves
+                        boolean anyLegalMoves = false;
+                        for (KlotskiPiece piece : game.getPieces()) {
+                            int[] pos = {piece.position[0], piece.position[1]};
+                            List<int[]> moves = game.getLegalMovesForPiece(pos);
+                            if (!moves.isEmpty()) {
+                                anyLegalMoves = true;
+                                System.out.printf("Piece at (%d,%d) can move to:\n", pos[0], pos[1]);
+                                for (int[] move : moves) {
+                                    System.out.printf("  -> (%d,%d)\n", move[0], move[1]);
+                                }
+                            }
+                        }
+                        if (!anyLegalMoves) {
+                            System.out.println("No pieces have legal moves.");
+                        }
+                    } else if (parts.length == 3) {
+                        // Case: "move x y" - try to move piece at (x,y)
+                        int row = Integer.parseInt(parts[1]);
+                        int col = Integer.parseInt(parts[2]);
+                        int[] position = {row, col};
                         
-                        // Check win condition (Cao Cao at bottom center)
-                        KlotskiPiece cao = game.getPieces()[0];
-                        if (cao.position[0] == 3 && cao.position[1] == 1) {
-                            System.out.println("Congratulations! You won in " + game.getMoveCount() + " moves!");
-                            System.out.println("Type 'restart' to play again or 'exit' to quit.");
+                        KlotskiPiece piece = game.getPieceAt(position);
+                        if (piece == null) {
+                            System.out.println("No piece at (" + row + "," + col + ")");
+                            continue;
+                        }
+                        
+                        List<int[]> moves = game.getLegalMovesForPiece(position);
+                        if (moves.isEmpty()) {
+                            System.out.println("No legal moves for piece at (" + row + "," + col + ")");
+                        } else if (moves.size() == 1) {
+                            // Single legal move - execute it automatically
+                            int[] target = moves.get(0);
+                            game.applyAction(position, target);
+                            System.out.printf("Moved piece from (%d,%d) to (%d,%d)\n",
+                                    row, col, target[0], target[1]);
+                            System.out.println(game);
+                            
+                            // Check win condition
+                            KlotskiPiece cao = game.getPieces()[0];
+                            if (cao.position[0] == 3 && cao.position[1] == 1) {
+                                System.out.println("Congratulations! You won in " + game.getMoveCount() + " moves!");
+                                System.out.println("Type 'restart' to play again or 'exit' to quit.");
+                            }
+                        } else {
+                            // Multiple legal moves - show options
+                            System.out.printf("Multiple moves possible for piece at (%d,%d):\n", row, col);
+                            for (int[] move : moves) {
+                                System.out.printf("  -> (%d,%d)\n", move[0], move[1]);
+                            }
+                            System.out.println("Specify target position with 'move [fromRow] [fromCol] [toRow] [toCol]'");
+                        }
+                    } else if (parts.length == 5) {
+                        // Case: "move fromRow fromCol toRow toCol" - direct move
+                        int fromRow = Integer.parseInt(parts[1]);
+                        int fromCol = Integer.parseInt(parts[2]);
+                        int toRow = Integer.parseInt(parts[3]);
+                        int toCol = Integer.parseInt(parts[4]);
+                        
+                        if (game.isLegalMove(new int[]{fromRow, fromCol}, new int[]{toRow, toCol})) {
+                            game.applyAction(new int[]{fromRow, fromCol}, new int[]{toRow, toCol});
+                            System.out.printf("Moved piece from (%d,%d) to (%d,%d)\n",
+                                    fromRow, fromCol, toRow, toCol);
+                            System.out.println(game);
+                            
+                            // Check win condition
+                            if (game.isTerminal()) {
+                                System.out.println("Congratulations! You won in " + game.getMoveCount() + " moves!");
+                                System.out.println("Type 'restart' to play again or 'exit' to quit.");
+                            }
+                        } else {
+                            System.out.println("Invalid move.");
                         }
                     } else {
-                        System.out.println("Invalid move. Either no piece at that position or cannot move.");
-                    }
-                } catch (NumberFormatException e) {
-                    System.out.println("Invalid coordinates. Please enter numbers for row and column.");
-                }
-            } else if (input.startsWith("moves ")) {
-                try {
-                    String[] parts = input.split(" ");
-                    if (parts.length != 3) {
-                        System.out.println("Invalid command. Usage: moves [row] [col]");
-                        continue;
-                    }
-                    int row = Integer.parseInt(parts[1]);
-                    int col = Integer.parseInt(parts[2]);
-                    
-                    List<int[]> moves = game.getLegalMovesForPiece(new int[]{row, col});
-                    if (moves.isEmpty()) {
-                        System.out.println("No legal moves for piece at (" + row + "," + col + ")");
-                    } else {
-                        System.out.println("Legal moves for piece at (" + row + "," + col + "):");
-                        for (int[] move : moves) {
-                            System.out.println("  -> (" + move[0] + "," + move[1] + ")");
-                        }
+                        System.out.println("Invalid command. Usage:");
+                        System.out.println("  move - Show pieces with legal moves");
+                        System.out.println("  move [row] [col] - Move piece at (row,col)");
+                        System.out.println("  move [fromRow] [fromCol] [toRow] [toCol] - Direct move");
                     }
                 } catch (NumberFormatException e) {
                     System.out.println("Invalid coordinates. Please enter numbers for row and column.");
                 }
             } else {
                 System.out.println("Unknown command. Available commands:");
-                System.out.println("  move [fromRow] [fromCol] [toRow] [toCol] - Move piece");
-                System.out.println("  moves [row] [col] - Show possible moves");
+                System.out.println("  move - Show pieces with legal moves");
+                System.out.println("  move [row] [col] - Move piece at (row,col)");
                 System.out.println("  restart - Reset the game");
                 System.out.println("  exit - Quit the game");
             }
         }
         scanner.close();
-    }
+    }    
 }
