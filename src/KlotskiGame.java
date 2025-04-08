@@ -1,0 +1,327 @@
+import java.util.ArrayList;
+import java.util.List;
+
+public class KlotskiGame {
+    public enum Block {
+        CAO_CAO("Cao Cao", 2, 2, 1, 'C'),
+        GUAN_YU("Guan Yu", 2, 1, 1, 'Y'),
+        GENERAL("General", 1, 2, 4, 'G'),
+        SOLDIER("Soldier", 1, 1, 4, 'S');
+
+        private final String name;
+        private final int width;
+        private final int height;
+        private final int count;
+        private final char abbreviation;
+
+        Block(String name, int width, int height, int count, char abbreviation) {
+            this.name = name;
+            this.width = width;
+            this.height = height;
+            this.count = count;
+            this.abbreviation = abbreviation;
+        }
+
+        public String getName() { return name; }
+        public int getWidth() { return width; }
+        public int getHeight() { return height; }
+        public int getCount() { return count; }
+        public char getAbbreviation() { return abbreviation; }
+
+        @Override
+        public String toString() {
+            return String.format("%s (Size: %dx%d, Count: %d, Abbreviation: %c)", 
+                    name, width, height, count, abbreviation);
+        }
+    }
+
+    public static class KlotskiPiece {
+        public final int id;
+        public final String name;
+        public final char abbreviation;
+        public final int width;
+        public final int height;
+        private int[] position; // [row, col]
+
+        public KlotskiPiece(int id, String name, char abbreviation, int width, int height, int[] position) {
+            this.id = id;
+            this.name = name;
+            this.abbreviation = abbreviation;
+            this.width = width;
+            this.height = height;
+            this.position = position.clone();
+        }
+
+        public int[] getPosition() {
+            return position.clone();
+        }
+
+        public void setPosition(int[] position) {
+            this.position = position.clone();
+        }
+
+        public int[] getShape() {
+            return new int[]{width, height};
+        }
+
+        public int getSize() {
+            return width * height;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s (ID: %d, Position: [%d,%d], Size: %dx%d)", 
+                    name, id, position[0], position[1], width, height);
+        }
+    }
+    
+    private KlotskiPiece[] pieces;
+    private int moveCount;
+    private static final int BOARD_WIDTH = 4;
+    private static final int BOARD_HEIGHT = 5;
+
+    public KlotskiGame() {
+        initialize();
+    }
+
+    public void initialize() {
+        pieces = new KlotskiPiece[10];
+        // Cao Cao (2x2) (row x col)
+        pieces[0] = new KlotskiPiece(0, "Cao Cao", 'C', 2, 2, new int[]{0, 1});
+        // Guan Yu (2x1)
+        pieces[1] = new KlotskiPiece(1, "Guan Yu", 'Y', 2, 1, new int[]{3, 1});
+        // Generals (1x2)
+        pieces[2] = new KlotskiPiece(2, "General 1", 'G', 1, 2, new int[]{0, 0});
+        pieces[3] = new KlotskiPiece(3, "General 2", 'G', 1, 2, new int[]{0, 3});
+        pieces[4] = new KlotskiPiece(4, "General 3", 'G', 1, 2, new int[]{2, 0});
+        pieces[5] = new KlotskiPiece(5, "General 4", 'G', 1, 2, new int[]{2, 3});
+        // Soldiers (1x1)
+        pieces[6] = new KlotskiPiece(6, "Soldier 1", 'S', 1, 1, new int[]{4, 0});
+        pieces[7] = new KlotskiPiece(7, "Soldier 2", 'S', 1, 1, new int[]{4, 1});
+        pieces[8] = new KlotskiPiece(8, "Soldier 3", 'S', 1, 1, new int[]{4, 2});
+        pieces[9] = new KlotskiPiece(9, "Soldier 4", 'S', 1, 1, new int[]{4, 3});
+        
+        moveCount = 0;
+    }
+
+    public void applyAction(int[] from, int[] to) {
+        if (isLegalMove(from, to)) {
+            KlotskiPiece piece = getPieceAt(from);
+            int[] offset = {to[0] - from[0], to[1] - from[1]};
+            
+            // Calculate the piece's new position (top-left corner)
+            int[] newPos = {piece.position[0] + offset[0], piece.position[1] + offset[1]};
+            piece.setPosition(newPos);
+            moveCount++;
+        }
+    }
+
+    public boolean isLegalMove(int[] from, int[] to) {
+        // Check if positions are within bounds
+        if (from[0] < 0 || from[0] >= BOARD_HEIGHT || from[1] < 0 || from[1] >= BOARD_WIDTH ||
+            to[0] < 0 || to[0] >= BOARD_HEIGHT || to[1] < 0 || to[1] >= BOARD_WIDTH) {
+            return false;
+        }
+        
+        KlotskiPiece piece = getPieceAt(from);
+        if (piece == null) {
+            return false; // No piece at starting position
+        }
+        
+        // Check if the move is exactly one step in any direction
+        int rowDiff = to[0] - from[0];
+        int colDiff = to[1] - from[1];
+        if (!((Math.abs(rowDiff) == 1 && colDiff == 0) || 
+              (Math.abs(colDiff) == 1 && rowDiff == 0))) {
+            return false;
+        }
+        
+        // Calculate the piece's new position (top-left corner)
+        int[] newPos = {piece.position[0] + rowDiff, piece.position[1] + colDiff};
+        
+        // Check if new position is within bounds
+        if (newPos[0] < 0 || newPos[0] + piece.height > BOARD_HEIGHT ||
+            newPos[1] < 0 || newPos[1] + piece.width > BOARD_WIDTH) {
+            return false;
+        }
+        
+        // Check for collisions with other pieces
+        for (KlotskiPiece other : pieces) {
+            if (other != piece && overlaps(other, newPos, piece.width, piece.height)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    private boolean overlaps(KlotskiPiece piece, int[] position, int width, int height) {
+        return !(position[0] >= piece.position[0] + piece.height ||
+                position[0] + height <= piece.position[0] ||
+                position[1] >= piece.position[1] + piece.width ||
+                position[1] + width <= piece.position[1]);
+    }
+
+    private KlotskiPiece getPieceAt(int[] position) {
+        for (KlotskiPiece piece : pieces) {
+            if (position[0] >= piece.position[0] && 
+                position[0] < piece.position[0] + piece.height &&
+                position[1] >= piece.position[1] && 
+                position[1] < piece.position[1] + piece.width) {
+                return piece;
+            }
+        }
+        return null;
+    }
+
+    public List<int[]> getLegalMovesForPiece(int[] position) {
+        List<int[]> legalMoves = new ArrayList<>();
+        KlotskiPiece piece = getPieceAt(position);
+        if (piece == null) return legalMoves;
+        
+        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        for (int[] dir : directions) {
+            int[] newPos = {position[0] + dir[0], position[1] + dir[1]};
+            if (isLegalMove(position, newPos)) {
+                legalMoves.add(newPos);
+            }
+        }
+        return legalMoves;
+    }
+    
+    private int coordinateToIndex(int[] coordinate) {
+        return coordinate[0] * BOARD_WIDTH + coordinate[1];
+    }
+
+    private int[] indexToCoordinate(int index) {
+        return new int[]{index / BOARD_WIDTH, index % BOARD_WIDTH};
+    }
+
+    @Override
+    public String toString() {
+        char[][] board = new char[BOARD_HEIGHT][BOARD_WIDTH];
+        // Initialize empty board
+        for (int i = 0; i < BOARD_HEIGHT; i++) {
+            for (int j = 0; j < BOARD_WIDTH; j++) {
+                board[i][j] = '.';
+            }
+        }
+        
+        // Place pieces on the board
+        for (KlotskiPiece piece : pieces) {
+            int[] pos = piece.getPosition();
+            for (int i = 0; i < piece.height; i++) {
+                for (int j = 0; j < piece.width; j++) {
+                    if (pos[0] + i < BOARD_HEIGHT && pos[1] + j < BOARD_WIDTH) {
+                        board[pos[0] + i][pos[1] + j] = piece.abbreviation;
+                    }
+                }
+            }
+        }
+        
+        // Build the string representation
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < BOARD_HEIGHT; i++) {
+            for (int j = 0; j < BOARD_WIDTH; j++) {
+                sb.append(board[i][j]).append(' ');
+            }
+            sb.append('\n');
+        }
+        sb.append("Move count: ").append(moveCount);
+        return sb.toString();
+    }
+
+    public KlotskiPiece[] getPieces() {
+        return pieces.clone();
+    }
+
+    public int getMoveCount() {
+        return moveCount;
+    }
+    
+    public static void main(String[] args) {
+        KlotskiGame game = new KlotskiGame();
+        java.util.Scanner scanner = new java.util.Scanner(System.in);
+        
+        System.out.println("Welcome to Klotski Game!");
+        System.out.println("Commands:");
+        System.out.println("  move [fromRow] [fromCol] [toRow] [toCol] - Move piece from (fromRow,fromCol) to (toRow,toCol)");
+        System.out.println("  moves [row] [col] - Show possible moves for piece at (row,col)");
+        System.out.println("  restart - Reset the game");
+        System.out.println("  exit - Quit the game");
+        System.out.println("Current board:");
+        System.out.println(game);
+
+        while (true) {
+            System.out.print("> ");
+            String input = scanner.nextLine().trim();
+            
+            if (input.equalsIgnoreCase("exit")) {
+                System.out.println("Thanks for playing!");
+                break;
+            } else if (input.equalsIgnoreCase("restart")) {
+                game.initialize();
+                System.out.println("Game restarted. Current board:");
+                System.out.println(game);
+            } else if (input.startsWith("move ")) {
+                try {
+                    String[] parts = input.split(" ");
+                    if (parts.length != 5) {
+                        System.out.println("Invalid command. Usage: move [fromRow] [fromCol] [toRow] [toCol]");
+                        continue;
+                    }
+                    int fromRow = Integer.parseInt(parts[1]);
+                    int fromCol = Integer.parseInt(parts[2]);
+                    int toRow = Integer.parseInt(parts[3]);
+                    int toCol = Integer.parseInt(parts[4]);
+                    
+                    if (game.isLegalMove(new int[]{fromRow, fromCol}, new int[]{toRow, toCol})) {
+                        game.applyAction(new int[]{fromRow, fromCol}, new int[]{toRow, toCol});
+                        System.out.println("Move applied. Current board:");
+                        System.out.println(game);
+                        
+                        // Check win condition (Cao Cao at bottom center)
+                        KlotskiPiece cao = game.getPieces()[0];
+                        if (cao.position[0] == 3 && cao.position[1] == 1) {
+                            System.out.println("Congratulations! You won in " + game.getMoveCount() + " moves!");
+                            System.out.println("Type 'restart' to play again or 'exit' to quit.");
+                        }
+                    } else {
+                        System.out.println("Invalid move. Either no piece at that position or cannot move.");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid coordinates. Please enter numbers for row and column.");
+                }
+            } else if (input.startsWith("moves ")) {
+                try {
+                    String[] parts = input.split(" ");
+                    if (parts.length != 3) {
+                        System.out.println("Invalid command. Usage: moves [row] [col]");
+                        continue;
+                    }
+                    int row = Integer.parseInt(parts[1]);
+                    int col = Integer.parseInt(parts[2]);
+                    
+                    List<int[]> moves = game.getLegalMovesForPiece(new int[]{row, col});
+                    if (moves.isEmpty()) {
+                        System.out.println("No legal moves for piece at (" + row + "," + col + ")");
+                    } else {
+                        System.out.println("Legal moves for piece at (" + row + "," + col + "):");
+                        for (int[] move : moves) {
+                            System.out.println("  -> (" + move[0] + "," + move[1] + ")");
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid coordinates. Please enter numbers for row and column.");
+                }
+            } else {
+                System.out.println("Unknown command. Available commands:");
+                System.out.println("  move [fromRow] [fromCol] [toRow] [toCol] - Move piece");
+                System.out.println("  moves [row] [col] - Show possible moves");
+                System.out.println("  restart - Reset the game");
+                System.out.println("  exit - Quit the game");
+            }
+        }
+        scanner.close();
+    }
+}
