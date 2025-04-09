@@ -10,11 +10,22 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
+class RectangleBlock extends Rectangle {
+    public float targetX;
+    public float targetY;
+
+    public RectangleBlock(float x, float y, float width, float height, float targetX, float targetY) {
+        super(x, y, width, height);
+        this.targetX = targetX;
+        this.targetY = targetY;
+    }
+}
+
 public class Klotski extends ApplicationAdapter {
     private ShapeRenderer shapeRenderer;
     private SpriteBatch batch;
     private BitmapFont font;
-    private Rectangle[] blocks;
+    private RectangleBlock[] blocks;
     private Color[] colors;
     private String[] labels;
     private int draggedBlock = -1;
@@ -32,25 +43,25 @@ public class Klotski extends ApplicationAdapter {
         font.setColor(Color.WHITE);
 
         // Calculate cell size based on window dimensions
-        cellSize = Math.min(Gdx.graphics.getWidth()/gridCols, Gdx.graphics.getHeight()/gridRows);
+        cellSize = Math.min(Gdx.graphics.getWidth() / gridCols, Gdx.graphics.getHeight() / gridRows);
 
         // Create blocks with labels
-        blocks = new Rectangle[3];
+        blocks = new RectangleBlock[3];
         colors = new Color[3];
         labels = new String[3];
 
         // Block 1 (2x2 square)
-        blocks[0] = new Rectangle(1*cellSize, 1*cellSize, 2*cellSize, 2*cellSize);
+        blocks[0] = new RectangleBlock(1*cellSize, 1*cellSize, 2*cellSize, 2*cellSize, 0.0f, 0.0f);
         colors[0] = Color.RED;
         labels[0] = "Big\nBlock";
 
         // Block 2 (2x1 horizontal)
-        blocks[1] = new Rectangle(0*cellSize, 3*cellSize, 2*cellSize, 1*cellSize);
+        blocks[1] = new RectangleBlock(0*cellSize, 3*cellSize, 2*cellSize, 1*cellSize, 0.0f, 0.0f);
         colors[1] = Color.BLUE;
         labels[1] = "Wide\nBlock";
 
         // Block 3 (1x2 vertical)
-        blocks[2] = new Rectangle(3*cellSize, 0*cellSize, 1*cellSize, 2*cellSize);
+        blocks[2] = new RectangleBlock(3*cellSize, 0*cellSize, 1*cellSize, 2*cellSize, 0.0f, 0.0f);
         colors[2] = Color.GREEN;
         labels[2] = "Tall\nBlock";
     }
@@ -90,6 +101,9 @@ public class Klotski extends ApplicationAdapter {
 
         // Handle dragging
         handleInput();
+
+        // Block animation
+        deltaSnapBlocks();
     }
 
     private void drawGrid() {
@@ -133,30 +147,42 @@ public class Klotski extends ApplicationAdapter {
                 float newY = touchY - dragOffset.y;
 
                 // Keep within grid bounds
-                newX = Math.max(0, Math.min(newX, gridCols*cellSize - blocks[draggedBlock].width));
-                newY = Math.max(0, Math.min(newY, gridRows*cellSize - blocks[draggedBlock].height));
+                newX = Math.max(0, Math.min(newX, gridCols * cellSize - blocks[draggedBlock].width));
+                newY = Math.max(0, Math.min(newY, gridRows * cellSize - blocks[draggedBlock].height));
+
+                float[] boundary = getBoundaryForBlock(draggedBlock);
+                System.out.printf("%.2f, %.2f, %.2f, %.2f\n", boundary[0], boundary[1], boundary[2], boundary[3]);
+                if (newX + blocks[draggedBlock].width > boundary[1]) {
+                    newX = boundary[1] - blocks[draggedBlock].width ;
+                } else if (newX < boundary[0]) {
+                    newX = boundary[0];
+                }
+
+                if (newY + blocks[draggedBlock].height > boundary[3]) {
+                    newY = boundary[3] - blocks[draggedBlock].height;
+                } else if (newY < boundary[2]) {
+                    newY = boundary[2];
+                }
 
                 blocks[draggedBlock].x = newX;
                 blocks[draggedBlock].y = newY;
 
-                // Trigger snapping animation
-                if (!isAnimating) {
-                    isAnimating = true;
-                }
+                blocks[draggedBlock].targetX = Math.round((blocks[draggedBlock].x / cellSize)) * cellSize;
+                blocks[draggedBlock].targetY  = Math.round((blocks[draggedBlock].y / cellSize)) * cellSize;
             }
         } else {
-            if (isAnimating) {
-                if(deltaSnapBlocks()) { isAnimating = false; };
-            } else {
-                draggedBlock = -1;
-            }
+            draggedBlock = -1;
         }
     }
 
     public boolean deltaSnapBlocks() {
         for (int i = 0; i < blocks.length; i++) {
-            float targetx = Math.round((blocks[i].x / cellSize)) * cellSize;
-            float targety = Math.round((blocks[i].y / cellSize)) * cellSize;
+            // Skip dragged block
+            if (i == draggedBlock) {
+                continue;
+            }
+            float targetx = blocks[i].targetX;
+            float targety = blocks[i].targetY;
             float deltax = - blocks[i].x + targetx;
             float deltay = - blocks[i].y + targety;
             // System.out.printf("Block %d: %.8f %.8f %.8f \n", i, deltax, targetx, blocks[i].x);
@@ -170,6 +196,47 @@ public class Klotski extends ApplicationAdapter {
             }
         }
         return true;
+    }
+
+    public void snapBlockToCoordinate(int blockid, float x, float y) {
+        blocks[blockid].targetX = x;
+        blocks[blockid].targetY = y;
+    }
+
+    public void snapBlockToGrid(int blockid, int x, int y) {
+        blocks[blockid].targetX = x * cellSize;
+        blocks[blockid].targetY  = y * cellSize;
+    }
+
+    public float[] getBoundaryForBlock(int blockid) {
+        float minX = 0;
+        float minY = 0;
+        float maxX = gridCols * cellSize;
+        float maxY = gridRows * cellSize;
+        float x = blocks[blockid].x;
+        float y = blocks[blockid].y;
+        float width = blocks[blockid].width;
+        float height = blocks[blockid].height;
+        for (int i = 0; i < blocks.length; i ++) {
+            if (i == blockid) {
+                continue;
+            }
+            if (y + height > blocks[i].y && blocks[i].y + blocks[i].height > y) {
+                if (blocks[i].x + blocks[i].width <= x) {
+                    minX = Math.max(minX, blocks[i].x + blocks[i].width);
+                } else if (x + width <= blocks[i].x) {
+                    maxX = Math.min(maxX, blocks[i].x);
+                }
+            }
+            if (x + width > blocks[i].x && blocks[i].x + blocks[i].width > x) {
+                if (blocks[i].y + blocks[i].height <= y) {
+                    minY = Math.max(minY, blocks[i].y + blocks[i].height);
+                } else if (y + height <= blocks[i].y) {
+                    maxY = Math.min(maxY, blocks[i].y);
+                }
+            }
+        }
+        return new float[] {minX, maxX, minY, maxY};
     }
 
     @Override
