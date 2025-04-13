@@ -1,3 +1,5 @@
+package io.github.jimzhouzzy.klotski;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -260,7 +262,7 @@ public class KlotskiSolver {
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
                 }
-            }       
+            }
         }
     }
 }

@@ -9,6 +9,9 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.Input;
+
+import java.util.List;
 
 class RectangleBlock extends Rectangle {
     public float targetX;
@@ -18,6 +21,15 @@ class RectangleBlock extends Rectangle {
         super(x, y, width, height);
         this.targetX = targetX;
         this.targetY = targetY;
+    }
+
+    public int[] getGridPosition(float cellSize) {
+        int row = 5 - ((int) Math.round((targetY) / (cellSize)) + Math.round(height
+                / (cellSize)));
+        int col = (int) Math.round(targetX / (cellSize));
+        // System.out.println("Block target position: (" + targetX + ", " + targetY + ")");
+        // System.out.println("Block position: (" + row + ", " + col + ")");
+        return new int[] { row, col };
     }
 }
 
@@ -34,6 +46,19 @@ public class Klotski extends ApplicationAdapter {
     private int gridRows = 5;
     private float cellSize;
     private boolean isAnimating = false;
+    private KlotskiGame game;
+    private boolean isInitializing = true;
+
+    // Buttons
+    private Rectangle restartButton;
+    private Rectangle hintButton;
+    private boolean showCongratulation = false;
+
+    // Hint animation variables
+    private boolean isHintAnimating = false;
+    private int hintBlock = -1;
+    private float hintTargetX;
+    private float hintTargetY;
 
     @Override
     public void create() {
@@ -41,29 +66,40 @@ public class Klotski extends ApplicationAdapter {
         batch = new SpriteBatch();
         font = new BitmapFont();
         font.setColor(Color.WHITE);
-
+    
         // Calculate cell size based on window dimensions
         cellSize = Math.min(Gdx.graphics.getWidth() / gridCols, Gdx.graphics.getHeight() / gridRows);
-
+    
+        game = new KlotskiGame();
+    
         // Create blocks with labels
-        blocks = new RectangleBlock[3];
-        colors = new Color[3];
-        labels = new String[3];
-
-        // Block 1 (2x2 square)
-        blocks[0] = new RectangleBlock(1*cellSize, 1*cellSize, 2*cellSize, 2*cellSize, 0.0f, 0.0f);
-        colors[0] = Color.RED;
-        labels[0] = "Big\nBlock";
-
-        // Block 2 (2x1 horizontal)
-        blocks[1] = new RectangleBlock(0*cellSize, 3*cellSize, 2*cellSize, 1*cellSize, 0.0f, 0.0f);
-        colors[1] = Color.BLUE;
-        labels[1] = "Wide\nBlock";
-
-        // Block 3 (1x2 vertical)
-        blocks[2] = new RectangleBlock(3*cellSize, 0*cellSize, 1*cellSize, 2*cellSize, 0.0f, 0.0f);
-        colors[2] = Color.GREEN;
-        labels[2] = "Tall\nBlock";
+        blocks = new RectangleBlock[game.pieces.length];
+        colors = new Color[game.pieces.length];
+        labels = new String[game.pieces.length];
+    
+        for (int i = 0; i < game.pieces.length; i++) {
+            blocks[i] = new RectangleBlock(-1 * cellSize, -1 * cellSize, game.getPiece(i).width * cellSize,
+                    game.getPiece(i).height * cellSize,
+                    0.0f, 0.0f);
+            labels[i] = game.getPiece(i).name;
+            colors[i] = Color.WHITE;
+        }
+    
+        updatePiecesFromGame();
+    
+        // Initialize buttons for the main game
+        float buttonWidth = 150;
+        float buttonHeight = 50;
+        float buttonX = Gdx.graphics.getWidth() - buttonWidth - 20;
+        restartButton = new Rectangle(buttonX, Gdx.graphics.getHeight() - buttonHeight - 20, buttonWidth, buttonHeight);
+        hintButton = new Rectangle(buttonX, Gdx.graphics.getHeight() - 2 * (buttonHeight + 10) - 20, buttonWidth,
+                buttonHeight);
+    }
+    
+    public void updatePiecesFromGame() {
+        for (int i = 0; i < blocks.length; i++) {
+            snapBlockToGrid(i, game.getPiece(i).getPosition()[0], game.getPiece(i).getPosition()[1]);
+        }
     }
 
     @Override
@@ -78,14 +114,17 @@ public class Klotski extends ApplicationAdapter {
         // Draw blocks
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         for (int i = 0; i < blocks.length; i++) {
+            // Draw filled rectangle
             shapeRenderer.setColor(colors[i]);
             shapeRenderer.rect(blocks[i].x, blocks[i].y, blocks[i].width, blocks[i].height);
+        }
+        shapeRenderer.end();
 
-            // Draw border
-            //shapeRenderer.set(ShapeRenderer.ShapeType.Line);
-            shapeRenderer.setColor(Color.WHITE);
+        // Draw borders
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        for (int i = 0; i < blocks.length; i++) {
+            shapeRenderer.setColor(Color.BLACK);
             shapeRenderer.rect(blocks[i].x, blocks[i].y, blocks[i].width, blocks[i].height);
-            shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
         }
         shapeRenderer.end();
 
@@ -94,16 +133,125 @@ public class Klotski extends ApplicationAdapter {
         for (int i = 0; i < blocks.length; i++) {
             Rectangle r = blocks[i];
             font.draw(batch, labels[i],
-                r.x + r.width/4,
-                r.y + r.height/2 + font.getCapHeight()/2);
+                    r.x + r.width / 4,
+                    r.y + r.height / 2 + font.getCapHeight() / 2);
         }
+
+        // Draw buttons
+        font.draw(batch, "Restart", restartButton.x + 20, restartButton.y + 30);
+        font.draw(batch, "Hint", hintButton.x + 40, hintButton.y + 30);
         batch.end();
+
+        // Draw buttons' borders
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.rect(restartButton.x, restartButton.y, restartButton.width, restartButton.height);
+        shapeRenderer.rect(hintButton.x, hintButton.y, hintButton.width, hintButton.height);
+        shapeRenderer.end();
 
         // Handle dragging
         handleInput();
 
+        // Handle hint animation
+        if (isHintAnimating) {
+            animateHint();
+        }
+
         // Block animation
-        deltaSnapBlocks();
+        if (!isInitializing) {
+            deltaSnapBlocks(3.0f);
+        } else if (isInitializing) {
+            if (deltaSnapBlocksSeparately(5.0f)) {
+                isInitializing = false;
+            }
+        }
+
+        // Check for success
+        if (game.isTerminal()) {
+            showCongratulation = true;
+        }
+
+        // Show congratulation screen
+        if (showCongratulation) {
+            drawCongratulationScreen();
+        }
+    }
+
+    private void updateGame() {
+        for (int i = 0; i < blocks.length; i++) {
+            // System.out.println("Block " + i + " original position: (" + game.pieces[i].getPosition()[0] + ", "
+            //         + game.pieces[i].getPosition()[1] + ")");
+            // System.out.println("Block " + i + " position: (" + blocks[i].getGridPosition(cellSize)[0] + ", "
+            //         + blocks[i].getGridPosition(cellSize)[1] + ")");
+            game.pieces[i].setPosition(blocks[i].getGridPosition(cellSize));
+        }
+    }
+
+    private void animateHint() {
+        RectangleBlock block = blocks[hintBlock];
+        float deltaX = hintTargetX - block.x;
+        float deltaY = hintTargetY - block.y;
+        block.targetX = hintTargetX;
+        block.targetY = hintTargetY;
+        updateGame();
+
+        if (Math.abs(deltaX) > 1.0f || Math.abs(deltaY) > 1.0f) {
+        } else {
+            block.x = hintTargetX;
+            block.y = hintTargetY;
+            colors[hintBlock] = Color.WHITE; // Reset color
+            isHintAnimating = false; // End animation
+        }
+    }
+
+    private void drawCongratulationScreen() {
+        // Draw semi-transparent background
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0, 0, 0, 0.8f); // Semi-transparent black background
+        shapeRenderer.rect(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        shapeRenderer.end();
+    
+        // Draw congratulation text
+        batch.begin();
+        font.getData().setScale(1.5f); // Use a simpler font size
+        font.setColor(Color.WHITE); // Ensure text is readable
+        font.draw(batch, "Congratulations!", Gdx.graphics.getWidth() / 2 - 100, Gdx.graphics.getHeight() / 2 + 50);
+        batch.end();
+    
+        // Draw restart button
+        float buttonWidth = 200;
+        float buttonHeight = 60;
+        float buttonX = Gdx.graphics.getWidth() / 2 - buttonWidth / 2;
+        float buttonY = Gdx.graphics.getHeight() / 2 - 100;
+    
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(Color.DARK_GRAY); // Button background
+        shapeRenderer.rect(buttonX, buttonY, buttonWidth, buttonHeight);
+        shapeRenderer.end();
+    
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE); // Button border
+        shapeRenderer.rect(buttonX, buttonY, buttonWidth, buttonHeight);
+        shapeRenderer.end();
+    
+        batch.begin();
+        font.draw(batch, "Restart", buttonX + 50, buttonY + 40);
+        batch.end();
+    
+        // Use a temporary button for the congratulation screen
+        Rectangle tempRestartButton = new Rectangle(buttonX, buttonY, buttonWidth, buttonHeight);
+    
+        // Check if the temporary restart button is clicked
+        if (Gdx.input.isTouched()) {
+            float touchX = Gdx.input.getX();
+            float touchY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            if (tempRestartButton.contains(touchX, touchY)) {
+                game.initialize();
+                updatePiecesFromGame();
+                isInitializing = true;
+                showCongratulation = false;
+            }
+        }
     }
 
     private void drawGrid() {
@@ -129,15 +277,59 @@ public class Klotski extends ApplicationAdapter {
         if (Gdx.input.isTouched()) {
             float touchX = Gdx.input.getX();
             float touchY = Gdx.graphics.getHeight() - Gdx.input.getY();
-
+    
+            // Check if restart button is clicked in the congratulations screen
+            if (showCongratulation && restartButton.contains(touchX, touchY)) {
+                game.initialize();
+                updatePiecesFromGame();
+                isInitializing = true;
+                showCongratulation = false;
+                return;
+            }
+    
+            // Check if restart button is clicked in the main game
+            if (restartButton.contains(touchX, touchY)) {
+                game.initialize();
+                updatePiecesFromGame();
+                isInitializing = true;
+                showCongratulation = false;
+                return;
+            }
+    
+            // Check if hint button is clicked
+            if (hintButton.contains(touchX, touchY)) {
+                List<String> solution = KlotskiSolver.solve(game);
+                if (solution != null && !solution.isEmpty()) {
+                    String move = solution.get(0);
+                    System.out.println("Hint: " + move);
+    
+                    String[] parts = move.split(" ");
+                    int fromIndex = move.indexOf(" from ");
+                    String fromPart = move.substring(fromIndex + 6, move.indexOf(" to "));
+                    String toPart = move.substring(move.indexOf(" to ") + 4);
+    
+                    int fromRow = Integer.parseInt(fromPart.substring(1, fromPart.indexOf(',')));
+                    int fromCol = Integer.parseInt(fromPart.substring(fromPart.indexOf(',') + 1, fromPart.length() - 1));
+                    int toRow = Integer.parseInt(toPart.substring(1, toPart.indexOf(',')));
+                    int toCol = Integer.parseInt(toPart.substring(toPart.indexOf(',') + 1, toPart.length() - 1));
+    
+                    hintBlock = getBlockIdentityByPosition(fromRow, fromCol);
+                    hintTargetX = toCol * cellSize;
+                    hintTargetY = (gridRows - toRow) * cellSize - blocks[hintBlock].height;
+                    // colors[hintBlock] = Color.YELLOW;
+                    isHintAnimating = true;
+                }
+                return;
+            }
+    
+            // Handle block dragging
             if (draggedBlock == -1) {
-                // Find which block was touched
                 for (int i = 0; i < blocks.length; i++) {
                     if (blocks[i].contains(touchX, touchY)) {
                         draggedBlock = i;
                         dragOffset = new Vector2(
-                            touchX - blocks[i].x,
-                            touchY - blocks[i].y
+                                touchX - blocks[i].x,
+                                touchY - blocks[i].y
                         );
                         break;
                     }
@@ -145,13 +337,12 @@ public class Klotski extends ApplicationAdapter {
             } else {
                 float newX = touchX - dragOffset.x;
                 float newY = touchY - dragOffset.y;
-
-                // Keep within grid bounds
+    
                 newX = Math.max(0, Math.min(newX, gridCols * cellSize - blocks[draggedBlock].width));
                 newY = Math.max(0, Math.min(newY, gridRows * cellSize - blocks[draggedBlock].height));
-
+    
                 float[] boundary = getBoundaryForBlock(draggedBlock);
-                System.out.printf("%.2f, %.2f, %.2f, %.2f\n", boundary[0], boundary[1], boundary[2], boundary[3]);
+                // System.out.printf("%.2f, %.2f, %.2f, %.2f\n", boundary[0], boundary[1], boundary[2], boundary[3]);
                 if (newX + blocks[draggedBlock].width > boundary[1]) {
                     newX = boundary[1] - blocks[draggedBlock].width ;
                 } else if (newX < boundary[0]) {
@@ -166,33 +357,69 @@ public class Klotski extends ApplicationAdapter {
 
                 blocks[draggedBlock].x = newX;
                 blocks[draggedBlock].y = newY;
-
+    
                 blocks[draggedBlock].targetX = Math.round((blocks[draggedBlock].x / cellSize)) * cellSize;
-                blocks[draggedBlock].targetY  = Math.round((blocks[draggedBlock].y / cellSize)) * cellSize;
+                blocks[draggedBlock].targetY = Math.round((blocks[draggedBlock].y / cellSize)) * cellSize;
             }
         } else {
             draggedBlock = -1;
         }
     }
 
-    public boolean deltaSnapBlocks() {
+    public int getBlockIdentityByPosition(int row, int col) {
         for (int i = 0; i < blocks.length; i++) {
-            // Skip dragged block
-            if (i == draggedBlock) {
-                continue;
+            if (blocks[i].getGridPosition(cellSize)[0] == row && blocks[i].getGridPosition(cellSize)[1] == col) {
+                return i;
             }
-            float targetx = blocks[i].targetX;
-            float targety = blocks[i].targetY;
-            float deltax = - blocks[i].x + targetx;
-            float deltay = - blocks[i].y + targety;
-            // System.out.printf("Block %d: %.8f %.8f %.8f \n", i, deltax, targetx, blocks[i].x);
-            if (Math.abs(deltax) <= 0.1 && Math.abs(deltay) <= 0.1) {
-                blocks[i].x = targetx;
-                blocks[i].y = targety;
+        }
+        return -1;
+    }
+
+    public boolean deltaSnapBlocks(float ratio) {
+        boolean allDone = true;
+
+        for (int i = 0; i < blocks.length; i++) {
+            if (i == draggedBlock)
+                continue;
+
+            float targetX = blocks[i].targetX;
+            float targetY = blocks[i].targetY;
+            float deltaX = targetX - blocks[i].x;
+            float deltaY = targetY - blocks[i].y;
+
+            if (Math.abs(deltaX) > 1.0f || Math.abs(deltaY) > 1.0f) {
+                blocks[i].x += deltaX / ratio;
+                blocks[i].y += deltaY / ratio;
+                allDone = false;
             } else {
-                blocks[i].x += deltax / 3.0f;
-                blocks[i].y += deltay / 3.0f;
+                blocks[i].x = targetX;
+                blocks[i].y = targetY;
+            }
+        }
+        if (allDone && !isInitializing && !isHintAnimating) {
+            updateGame();
+        }
+        return allDone;
+    }
+
+    public boolean deltaSnapBlocksSeparately(float ratio) {
+        for (int i = 0; i < blocks.length; i++) {
+            if (i == draggedBlock)
+                continue;
+
+            float targetX = blocks[i].targetX;
+            float targetY = blocks[i].targetY;
+            float deltaX = targetX - blocks[i].x;
+            float deltaY = targetY - blocks[i].y;
+
+            if (Math.abs(deltaX) > 1.0f || Math.abs(deltaY) > 1.0f) {
+                blocks[i].x += deltaX / ratio;
+                blocks[i].y += deltaY / ratio;
                 return false;
+            } else {
+                blocks[i].x = targetX;
+                blocks[i].y = targetY;
+                return true;
             }
         }
         return true;
@@ -203,9 +430,11 @@ public class Klotski extends ApplicationAdapter {
         blocks[blockid].targetY = y;
     }
 
-    public void snapBlockToGrid(int blockid, int x, int y) {
+    public void snapBlockToGrid(int blockid, int row, int col) {
+        int x = col;
+        int y = gridRows - row;
         blocks[blockid].targetX = x * cellSize;
-        blocks[blockid].targetY  = y * cellSize;
+        blocks[blockid].targetY = y * cellSize - blocks[blockid].height;
     }
 
     public float[] getBoundaryForBlock(int blockid) {
@@ -217,7 +446,7 @@ public class Klotski extends ApplicationAdapter {
         float y = blocks[blockid].y;
         float width = blocks[blockid].width;
         float height = blocks[blockid].height;
-        for (int i = 0; i < blocks.length; i ++) {
+        for (int i = 0; i < blocks.length; i++) {
             if (i == blockid) {
                 continue;
             }
@@ -236,7 +465,7 @@ public class Klotski extends ApplicationAdapter {
                 }
             }
         }
-        return new float[] {minX, maxX, minY, maxY};
+        return new float[] { minX, maxX, minY, maxY };
     }
 
     @Override
@@ -248,7 +477,6 @@ public class Klotski extends ApplicationAdapter {
 
     @Override
     public void resize(int width, int height) {
-        // Recalculate cell size when window is resized
-        cellSize = Math.min(width/gridCols, height/gridRows);
+        cellSize = Math.min(width / gridCols, height / gridRows);
     }
 }
