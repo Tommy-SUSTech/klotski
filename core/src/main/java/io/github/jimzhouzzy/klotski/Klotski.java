@@ -17,6 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.Group;
+import com.badlogic.gdx.utils.Align;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +38,11 @@ public class Klotski extends ApplicationAdapter {
     private boolean isTerminal = false;
 
     private List<int[][]> moveHistory; // Stores the history of moves
-private int currentMoveIndex; // Tracks the current move in the history
+    private int currentMoveIndex; // Tracks the current move in the history
+
+    private float elapsedTime; // Tracks the elapsed time in seconds
+    private Label timerLabel; // Label to display the timer
+    private Label movesLabel; // Label to display the total moves
 
     private KlotskiGame game; // Reference to the game logic
     private List<String> solution; // Stores the current solution
@@ -131,12 +136,27 @@ private int currentMoveIndex; // Tracks the current move in the history
             blocks.add(block); // Add block to the list
             stage.addActor(block); // Add block to the stage
         }
-        
+
         // Create the congratulations screen
         createCongratulationsScreen();
 
         moveHistory = new ArrayList<>();
         currentMoveIndex = -1; // No moves yet
+
+        // Add timer label under the buttons
+        timerLabel = new Label("Time: 00:00", skin);
+        timerLabel.setFontScale(1.2f);
+        timerLabel.setAlignment(Align.center);
+        buttonTable.add(timerLabel).width(100).pad(10).row();
+
+        // Add moves label under the timer
+        movesLabel = new Label("Moves: 0", skin);
+        movesLabel.setFontScale(1.2f);
+        movesLabel.setAlignment(Align.center);
+        buttonTable.add(movesLabel).width(100).pad(10).row();
+
+        // Reset elapsed time
+        elapsedTime = 0;
     }
 
     // Helper method to assign colors to pieces
@@ -237,6 +257,14 @@ private int currentMoveIndex; // Tracks the current move in the history
             return;
         }
 
+        // Update elapsed time
+        elapsedTime += Gdx.graphics.getDeltaTime();
+
+        // Format elapsed time as MM:SS
+        int minutes = (int) (elapsedTime / 60);
+        int seconds = (int) (elapsedTime % 60);
+        timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+
         // Draw grid lines
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(Color.WHITE);
@@ -278,6 +306,7 @@ private int currentMoveIndex; // Tracks the current move in the history
                 int fromCol = Integer.parseInt(fromPart.substring(fromPart.indexOf(',') + 1, fromPart.length() - 1));
                 int toRow = Integer.parseInt(toPart.substring(1, toPart.indexOf(',')));
                 int toCol = Integer.parseInt(toPart.substring(toPart.indexOf(',') + 1, toPart.length() - 1));
+                System.out.println(game.toString());
 
                 // Find the block at the starting position
                 for (RectangleBlockActor block : blocks) {
@@ -290,17 +319,18 @@ private int currentMoveIndex; // Tracks the current move in the history
                                 Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
                                 Actions.run(() -> {
                                     // Update game logic after animation
-                                    piece.setPosition(new int[] { toRow, toCol });
-                                    this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
+                                    // TODO: find a more robust way, letting applyAction to handle at ease
+                                    // Maybe we shall add another variable to show whether we finished the update
                                     game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                                    piece.setPosition(new int[] { toRow, toCol });
                                     recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                                    solutionIndex++;
+                                    this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
                                 })));
                         break;
                     }
                 }
 
-                // Move to the next step
-                solutionIndex++;
                 if (solutionIndex >= solution.size()) {
                     isAutoSolving = false; // Stop auto-solving when all steps are completed
                 }
@@ -327,6 +357,12 @@ private int currentMoveIndex; // Tracks the current move in the history
     private void handleRestart(KlotskiGame game) {
         // Stop auto-solving if active
         stopAutoSolving();
+
+        // Reset the timer
+        elapsedTime = 0;
+        timerLabel.setText("Time: 00:00");
+        currentMoveIndex = -1;
+        movesLabel.setText("Moves: 0");
 
         // Stop all animations
         for (RectangleBlockActor block : blocks) {
@@ -376,14 +412,15 @@ private int currentMoveIndex; // Tracks the current move in the history
                             Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
                             Actions.run(() -> {
                                 // Update game logic after animation
-                                piece.setPosition(new int[] { toRow, toCol });
-                                this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
                                 game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                                piece.setPosition(new int[] { toRow, toCol });
                                 recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                                this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
                             })));
                     break;
                 }
             }
+            System.out.println(game.toString());
         } else {
             System.out.println("No solution found or no hint available.");
         }
@@ -421,7 +458,7 @@ private int currentMoveIndex; // Tracks the current move in the history
         if (isAutoSolving) {
             isAutoSolving = false;
             System.out.println("Auto-solving stopped.");
-            updateAutoButtonText(autoButton); 
+            updateAutoButtonText(autoButton);
         }
     }
 
@@ -447,9 +484,12 @@ private int currentMoveIndex; // Tracks the current move in the history
         congratsTable.add(congratsLabel).padBottom(20).row();
 
         // Add time usage placeholder
-        Label timeLabel = new Label("Time: 00:00", skin); // Placeholder for time usage
-        timeLabel.setFontScale(1.5f);
-        congratsTable.add(timeLabel).padBottom(20).row();
+        Label timerLabel = new Label("Time: 00:00", skin); // Placeholder for time usage
+        timerLabel.setFontScale(1.5f);
+        congratsTable.add(timerLabel).padBottom(20).row();
+
+        // Store the timeLabel for later updates
+        this.timerLabel = timerLabel;
 
         // Add restart button
         TextButton restartButton = new TextButton("Restart", skin);
@@ -473,6 +513,14 @@ private int currentMoveIndex; // Tracks the current move in the history
     }
 
     private void showCongratulationsScreen() {
+        // Update the time label with the final elapsed time
+        int minutes = (int) (elapsedTime / 60);
+        int seconds = (int) (elapsedTime % 60);
+        timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+        
+        // Update the moves label with the total moves
+        movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+        
         congratulationsGroup.setVisible(true); // Show the congratulations screen
     }
 
@@ -489,10 +537,12 @@ private int currentMoveIndex; // Tracks the current move in the history
         while (moveHistory.size() > currentMoveIndex + 1) {
             moveHistory.remove(moveHistory.size() - 1);
         }
-    
+
         // Add the move to the history
         moveHistory.add(new int[][] { from, to });
         currentMoveIndex++;
+
+        movesLabel.setText("Moves: " + (currentMoveIndex + 1));
     }
 
     private void handleUndo() {
@@ -501,27 +551,13 @@ private int currentMoveIndex; // Tracks the current move in the history
             int[] from = lastMove[1]; // Reverse the move
             int[] to = lastMove[0];
 
-            // Find the block at the current position
-            for (RectangleBlockActor block : blocks) {
-                KlotskiGame.KlotskiPiece piece = game.getPiece(block.pieceId);
-                if (piece.position[0] == from[0] && piece.position[1] == from[1]) {
-                    // Animate the block's movement to the previous position
-                    float targetX = to[1] * cellSize;
-                    float targetY = (rows - to[0] - piece.height) * cellSize; // Invert y-axis
-                    block.addAction(Actions.sequence(
-                        Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
-                        Actions.run(() -> {
-                            // Update game logic after animation
-                            piece.setPosition(to);
-                            game.applyAction(from, to); // Apply the reverse move
-                            updateBlocksFromGame(game); // Update the blocks
-                            currentMoveIndex--; // Move back in history
-                            System.out.println("Undo performed.");
-                        })
-                    ));
-                    break;
-                }
-            }
+            game.applyAction(from, to); // Apply the reverse move
+            updateBlocksFromGame(game); // Update the blocks
+            currentMoveIndex--; // Move back in history
+
+            movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+
+            System.out.println("Undo performed: " + from[0] + "," + from[1] + " to " + to[0] + "," + to[1]);
         } else {
             System.out.println("No moves to undo.");
         }
@@ -534,26 +570,12 @@ private int currentMoveIndex; // Tracks the current move in the history
             int[] from = nextMove[0];
             int[] to = nextMove[1];
 
-            // Find the block at the current position
-            for (RectangleBlockActor block : blocks) {
-                KlotskiGame.KlotskiPiece piece = game.getPiece(block.pieceId);
-                if (piece.position[0] == from[0] && piece.position[1] == from[1]) {
-                    // Animate the block's movement to the next position
-                    float targetX = to[1] * cellSize;
-                    float targetY = (rows - to[0] - piece.height) * cellSize; // Invert y-axis
-                    block.addAction(Actions.sequence(
-                        Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
-                        Actions.run(() -> {
-                            // Update game logic after animation
-                            piece.setPosition(to);
-                            game.applyAction(from, to); // Apply the move
-                            updateBlocksFromGame(game); // Update the blocks
-                            System.out.println("Redo performed.");
-                        })
-                    ));
-                    break;
-                }
-            }
+            game.applyAction(from, to); // Apply the move
+            updateBlocksFromGame(game); // Update the blocks
+            
+            movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+
+            System.out.println("Redo performed: " + from[0] + "," + from[1] + " to " + to[0] + "," + to[1]);
         } else {
             System.out.println("No moves to redo.");
         }
