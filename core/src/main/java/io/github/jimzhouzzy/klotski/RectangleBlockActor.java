@@ -125,6 +125,8 @@ public class RectangleBlockActor extends Actor {
                         // Apply the action and record the move
                         gameScreen.getGame().applyAction(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
                         gameScreen.recordMove(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
+
+                        gameScreen.broadcastGameState();
                     })
                 ));
             }

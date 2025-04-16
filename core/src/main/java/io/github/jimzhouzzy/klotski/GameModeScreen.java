@@ -55,6 +55,30 @@ public class GameModeScreen implements Screen {
         });
         table.add(attackModeButton).width(200).height(50).padBottom(20).row();
 
+        // Add "Level 1" button
+        TextButton level1Button = new TextButton("Level 1", skin);
+        level1Button.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                klotski.setScreen(klotski.gameScreen); // Navigate to the game screen
+                klotski.gameScreen.setGameMode(false); // Set to Free Game mode
+                klotski.gameScreen.randomShuffle(10101L); // Shuffle with seed for Level 1
+            }
+        });
+        table.add(level1Button).width(200).height(50).padBottom(20).row();
+
+        // Add "Level 2" button
+        TextButton level2Button = new TextButton("Level 2", skin);
+        level2Button.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                klotski.setScreen(klotski.gameScreen); // Navigate to the game screen
+                klotski.gameScreen.setGameMode(false); // Set to Free Game mode
+                klotski.gameScreen.randomShuffle(10102L); // Shuffle with seed for Level 2
+            }
+        });
+        table.add(level2Button).width(200).height(50).padBottom(20).row();
+
         // Add "Back" button
         TextButton backButton = new TextButton("Back", skin);
         backButton.addListener(new ClickListener() {

@@ -6,5 +6,6 @@ dependencies {
 
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
+    implementation 'org.java-websocket:Java-WebSocket:1.5.3'
   }
 }

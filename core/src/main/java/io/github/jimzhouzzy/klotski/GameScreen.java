@@ -1,6 +1,8 @@
 // KNOWN ISSUES:
 // 1. The move count is incorrect when the user dragged a piece 
 //    across multiple grid.
+// 2. Restart in an leveled (seedly random shuffeled) game won't
+//    reset the game to the shuffeled state.
 
 package io.github.jimzhouzzy.klotski;
 
@@ -261,6 +263,8 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 return false;
             }
         });
+
+        broadcastGameState();
     }
 
     private void handleArrowKeys(int[] direction) {
@@ -465,6 +469,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                                     recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
                                     solutionIndex++;
                                     this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
+                                    broadcastGameState();
                                 })));
                         break;
                     }
@@ -522,6 +527,8 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         // Reset terminal state
         isTerminal = false;
 
+        broadcastGameState();
+
         System.out.println("Game restarted.");
     }
 
@@ -560,6 +567,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                                 piece.setPosition(new int[] { toRow, toCol });
                                 recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
                                 this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
+                                broadcastGameState();
                             })));
                     break;
                 }
@@ -709,6 +717,8 @@ public class GameScreen extends ApplicationAdapter implements Screen {
 
             movesLabel.setText("Moves: " + (currentMoveIndex + 1));
 
+            broadcastGameState();
+
             System.out.println("Undo performed: " + from[0] + "," + from[1] + " to " + to[0] + "," + to[1]);
         } else {
             System.out.println("No moves to undo.");
@@ -726,6 +736,8 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             updateBlocksFromGame(game); // Update the blocks
 
             movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+
+            broadcastGameState();
 
             System.out.println("Redo performed: " + from[0] + "," + from[1] + " to " + to[0] + "," + to[1]);
         } else {
@@ -826,5 +838,20 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 System.out.println("Game auto-saved.");
             }
         }, 30, 30); // Delay of 30 seconds, repeat every 30 seconds
+    }
+
+    public void randomShuffle(long seed) {
+        game.randomShuffle(seed);
+        updateBlocksFromGame(game);
+    }
+
+    public void randomShuffle() {
+        game.randomShuffle();
+        updateBlocksFromGame(game);
+    }
+
+    public void broadcastGameState() {
+        String gameState = game.toString();
+        klotski.getWebSocketServer().broadcastGameState(gameState);
     }
 }

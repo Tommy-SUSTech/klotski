@@ -5,9 +5,13 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+
+import io.github.jimzhouzzy.klotski.GameWebSocketServer;
+
 import java.io.*;
 
 public class Klotski extends Game {
+	private GameWebSocketServer webSocketServer;
 
     private static final String LOGIN_STATUS_FILE = "login_status.dat"; // File to store login status
     public SpriteBatch batch;
@@ -35,6 +39,9 @@ public class Klotski extends Game {
         this.gameScreen = new GameScreen(this);
         
         this.setScreen(mainScreen);
+
+		webSocketServer = new GameWebSocketServer(8014);
+        webSocketServer.start();
     }
 
     public String getLoggedInUser() {
@@ -76,5 +83,14 @@ public class Klotski extends Game {
     public void dispose() {
         batch.dispose();
         font.dispose();
+		try {
+            webSocketServer.stop();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+	public GameWebSocketServer getWebSocketServer() {
+        return webSocketServer;
     }
 }

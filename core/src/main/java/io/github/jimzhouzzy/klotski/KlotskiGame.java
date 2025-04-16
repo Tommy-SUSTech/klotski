@@ -3,6 +3,7 @@ package io.github.jimzhouzzy.klotski;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class KlotskiGame {
     public enum Block {
@@ -230,6 +231,63 @@ public class KlotskiGame {
         }
 
         return legalMoves;
+    }
+
+    public List<int[][]> getLegalMoves() {
+        List<int[][]> legalMoves = new ArrayList<>();
+
+        // Iterate through all pieces
+        for (KlotskiPiece piece : pieces) {
+            int[] currentPosition = piece.getPosition();
+
+            int[][] directions = new int[][] {
+                {-1, 0}, // Up
+                {1, 0},  // Down
+                {0, -1}, // Left
+                {0, 1}   // Right
+            };
+            
+            for (int[] direction : directions) {
+                // Check each direction for legal moves
+                int[] newPosition = {
+                    currentPosition[0] + direction[0],
+                    currentPosition[1] + direction[1]
+                };
+
+                // If the move is legal, add it to the list
+                if (isLegalMove(currentPosition, newPosition)) {
+                    legalMoves.add(new int[][]{currentPosition, newPosition});
+                }
+            }   
+        }
+
+        return legalMoves;
+    }
+
+    public void randomShuffle(long seed) {
+        Random random = new Random(seed);
+
+        for (int i = 0; i < 100; i++) {
+            List<int[][]> legalMoves = getLegalMoves();
+            if (legalMoves.isEmpty()) {
+                break; // No legal moves available
+            }
+
+            // Pick a random move from the list of legal moves
+            int[][] move = legalMoves.get(random.nextInt(legalMoves.size()));
+            int[] from = move[0];
+            int[] to = move[1];
+
+            // Apply the selected move
+            applyAction(from, to);
+        }
+        System.out.println("Shuffled the game:");
+        System.out.println(this.toString());
+    }
+    
+    public void randomShuffle() {
+        long seed = System.currentTimeMillis(); // Use the current time as the seed
+        randomShuffle(seed);
     }
 
     private int coordinateToIndex(int[] coordinate) {
