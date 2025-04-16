@@ -1,5 +1,6 @@
 package io.github.jimzhouzzy.klotski;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class KlotskiGame {
         }
     }
 
-    public static class KlotskiPiece {
+    public static class KlotskiPiece implements Serializable {
         public final int id;
         public final String name;
         public final char abbreviation;
@@ -56,6 +57,14 @@ public class KlotskiGame {
 
         public int[] getPosition() {
             return position.clone();
+        }
+
+        public int getRow() {
+            return position[0];
+        }
+
+        public int getCol() {
+            return position[1];
         }
 
         public void setPosition(int[] position) {
@@ -200,6 +209,29 @@ public class KlotskiGame {
         return legalMoves;
     }
 
+    public List<int[][]> getLegalMovesByDirection(int[] direction) {
+        List<int[][]> legalMoves = new ArrayList<>();
+
+        // Iterate through all pieces
+        for (KlotskiPiece piece : pieces) {
+            int[] currentPosition = piece.getPosition();
+            
+            // Check each direction for legal moves
+            int[] newPosition = {
+                currentPosition[0] + direction[0],
+                currentPosition[1] + direction[1]
+            };
+
+            // If the move is legal, add it to the list
+            if (isLegalMove(currentPosition, newPosition)) {
+                legalMoves.add(new int[][]{currentPosition, newPosition});
+            }
+            
+        }
+
+        return legalMoves;
+    }
+
     private int coordinateToIndex(int[] coordinate) {
         return coordinate[0] * BOARD_WIDTH + coordinate[1];
     }
@@ -248,6 +280,49 @@ public class KlotskiGame {
 
     public int getMoveCount() {
         return moveCount;
+    }
+
+    public void setPieces(KlotskiPiece[] newPieces) {
+        if (newPieces == null || newPieces.length != pieces.length) {
+            throw new IllegalArgumentException("Invalid pieces array. It must have the same length as the original.");
+        }
+
+        // Replace the current pieces with the new ones
+        for (int i = 0; i < pieces.length; i++) {
+            if (newPieces[i] == null) {
+                throw new IllegalArgumentException("Piece at index " + i + " is null.");
+            }
+            pieces[i] = new KlotskiPiece(
+                newPieces[i].id,
+                newPieces[i].name,
+                newPieces[i].abbreviation,
+                newPieces[i].width,
+                newPieces[i].height,
+                newPieces[i].getPosition()
+            );
+        }
+    }
+    
+    public void setPieces(List<KlotskiPiece> newPieces) {
+        if (newPieces == null || newPieces.size() != pieces.length) {
+            throw new IllegalArgumentException("Invalid pieces list. It must have the same size as the original.");
+        }
+
+        // Replace the current pieces with the new ones
+        for (int i = 0; i < pieces.length; i++) {
+            KlotskiPiece newPiece = newPieces.get(i);
+            if (newPiece == null) {
+                throw new IllegalArgumentException("Piece at index " + i + " is null.");
+            }
+            pieces[i] = new KlotskiPiece(
+                newPiece.id,
+                newPiece.name,
+                newPiece.abbreviation,
+                newPiece.width,
+                newPiece.height,
+                newPiece.getPosition()
+            );
+        }
     }
 
     public static void main(String[] args) {

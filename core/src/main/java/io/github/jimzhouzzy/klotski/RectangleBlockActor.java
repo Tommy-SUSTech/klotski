@@ -5,6 +5,10 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+
+import io.github.jimzhouzzy.klotski.GameScreen;
+import io.github.jimzhouzzy.klotski.Klotski;
+
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.Color;
@@ -33,8 +37,9 @@ public class RectangleBlockActor extends Actor {
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 Klotski klotski = (Klotski) Gdx.app.getApplicationListener();
-                if (klotski.isAutoSolving()) {
-                    klotski.stopAutoSolving(); // Stop auto-solving if the user interacts with a block
+                GameScreen gameScreen = klotski.gameScreen;
+                if (gameScreen.isAutoSolving()) {
+                    gameScreen.stopAutoSolving(); // Stop auto-solving if the user interacts with a block
                 }
 
                 // Record the initial logical position
@@ -53,15 +58,16 @@ public class RectangleBlockActor extends Actor {
             @Override
             public void touchDragged(InputEvent event, float x, float y, int pointer) {
                 Klotski klotski = (Klotski) Gdx.app.getApplicationListener();
-                if (klotski.isAutoSolving()) {
-                    klotski.stopAutoSolving(); // Stop auto-solving if the user interacts with a block
+                GameScreen gameScreen = klotski.gameScreen;
+                if (gameScreen.isAutoSolving()) {
+                    gameScreen.stopAutoSolving(); // Stop auto-solving if the user interacts with a block
                 }
 
                 float newX = getX() + x - offsetX;
                 float newY = getY() + y - offsetY;
 
                 // Get the boundaries for this block
-                float[] boundaries = klotski.getBoundaryForBlock(RectangleBlockActor.this);
+                float[] boundaries = gameScreen.getBoundaryForBlock(RectangleBlockActor.this);
                 float minX = boundaries[0];
                 float maxX = boundaries[1];
                 float minY = boundaries[2];
@@ -77,6 +83,8 @@ public class RectangleBlockActor extends Actor {
 
             @Override
             public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                Klotski klotski = (Klotski) Gdx.app.getApplicationListener();
+                GameScreen gameScreen = klotski.gameScreen;
                 float cellSize = Math.min(Gdx.graphics.getWidth() / 4f, Gdx.graphics.getHeight() / 5f);
 
                 // Calculate the snapped position
@@ -84,7 +92,7 @@ public class RectangleBlockActor extends Actor {
                 snappedY = Math.round(getY() / cellSize) * cellSize;
 
                 // Get the boundaries for this block
-                float[] boundaries = ((Klotski) Gdx.app.getApplicationListener()).getBoundaryForBlock(RectangleBlockActor.this);
+                float[] boundaries = gameScreen.getBoundaryForBlock(RectangleBlockActor.this);
                 float minX = boundaries[0];
                 float maxX = boundaries[1];
                 float minY = boundaries[2];
@@ -115,9 +123,8 @@ public class RectangleBlockActor extends Actor {
                         game.getPiece(pieceId).setPosition(new int[]{newRow, newCol});
 
                         // Apply the action and record the move
-                        Klotski klotski = (Klotski) Gdx.app.getApplicationListener();
-                        klotski.getGame().applyAction(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
-                        klotski.recordMove(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
+                        gameScreen.getGame().applyAction(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
+                        gameScreen.recordMove(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
                     })
                 ));
             }
