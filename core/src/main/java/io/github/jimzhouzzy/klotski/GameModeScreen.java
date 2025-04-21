@@ -21,7 +21,7 @@ public class GameModeScreen implements Screen {
         Gdx.input.setInputProcessor(stage);
 
         // Load the skin for UI components
-        skin = new Skin(Gdx.files.internal("skins/default/skin/uiskin.json"));
+        skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
 
         // Create a table for layout
         Table table = new Table();
@@ -42,7 +42,7 @@ public class GameModeScreen implements Screen {
                 klotski.setScreen(klotski.gameScreen); // Navigate to the game screen
             }
         });
-        table.add(freeGameButton).width(200).height(50).padBottom(20).row();
+        table.add(freeGameButton).width(300).height(50).padBottom(20).row();
 
         // Add "3min-Attack" button
         TextButton attackModeButton = new TextButton("3min-Attack", skin);
@@ -53,7 +53,7 @@ public class GameModeScreen implements Screen {
                 klotski.setScreen(klotski.gameScreen); // Navigate to the game screen
             }
         });
-        table.add(attackModeButton).width(200).height(50).padBottom(20).row();
+        table.add(attackModeButton).width(300).height(50).padBottom(20).row();
 
         // Add "Level 1" button
         TextButton level1Button = new TextButton("Level 1", skin);
@@ -65,7 +65,7 @@ public class GameModeScreen implements Screen {
                 klotski.gameScreen.randomShuffle(10101L); // Shuffle with seed for Level 1
             }
         });
-        table.add(level1Button).width(200).height(50).padBottom(20).row();
+        table.add(level1Button).width(300).height(50).padBottom(20).row();
 
         // Add "Level 2" button
         TextButton level2Button = new TextButton("Level 2", skin);
@@ -77,7 +77,7 @@ public class GameModeScreen implements Screen {
                 klotski.gameScreen.randomShuffle(10102L); // Shuffle with seed for Level 2
             }
         });
-        table.add(level2Button).width(200).height(50).padBottom(20).row();
+        table.add(level2Button).width(300).height(50).padBottom(20).row();
 
         // Add "Back" button
         TextButton backButton = new TextButton("Back", skin);
@@ -87,7 +87,7 @@ public class GameModeScreen implements Screen {
                 klotski.setScreen(klotski.mainScreen); // Navigate back to the main screen
             }
         });
-        table.add(backButton).width(200).height(50);
+        table.add(backButton).width(300).height(50);
     }
 
     @Override

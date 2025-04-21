@@ -32,7 +32,7 @@ public class LoginScreen implements Screen {
         Gdx.input.setInputProcessor(stage);
 
         // Load the skin for UI components
-        skin = new Skin(Gdx.files.internal("skins/default/skin/uiskin.json"));
+        skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
 
         // Load user data from file
         loadUserData();

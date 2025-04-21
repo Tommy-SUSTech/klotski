@@ -36,6 +36,7 @@ import com.badlogic.gdx.utils.Timer;
 
 import io.github.jimzhouzzy.klotski.Klotski;
 import io.github.jimzhouzzy.klotski.KlotskiGame;
+import io.github.jimzhouzzy.klotski.KlotskiGame.KlotskiPiece;
 import io.github.jimzhouzzy.klotski.KlotskiSolver;
 import io.github.jimzhouzzy.klotski.RectangleBlockActor;
 
@@ -94,7 +95,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        skin = new Skin(Gdx.files.internal("skins/default/skin/uiskin.json"));
+        skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
         shapeRenderer = new ShapeRenderer();
 
         blocks = new ArrayList<>(); // Initialize the list of blocks
@@ -121,7 +122,8 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         // Add buttons with listeners
         for (String name : buttonNames) {
             TextButton button = new TextButton(name, skin);
-            buttonTable.add(button).width(100).pad(10);
+            button.getLabel().setFontScale(0.5f); 
+            buttonTable.add(button).height(30).width(100).pad(10);
             buttonTable.row();
 
             if (name.equals("Auto")) {
@@ -189,13 +191,14 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         currentMoveIndex = -1; // No moves yet
 
         // Add timer label under the buttons
-        timerLabel = new Label("Time: 00:00", skin);
+        Label.LabelStyle defaultWhiteStyle = skin.get("default-white", Label.LabelStyle.class);
+        timerLabel = new Label("Time: 00:00", defaultWhiteStyle);
         timerLabel.setFontScale(1.2f);
         timerLabel.setAlignment(Align.center);
         buttonTable.add(timerLabel).width(100).pad(10).row();
 
         // Add moves label under the timer
-        movesLabel = new Label("Moves: 0", skin);
+        movesLabel = new Label("Moves: 0", defaultWhiteStyle);
         movesLabel.setFontScale(1.2f);
         movesLabel.setAlignment(Align.center);
         buttonTable.add(movesLabel).width(100).pad(10).row();
@@ -488,7 +491,29 @@ public class GameScreen extends ApplicationAdapter implements Screen {
 
     @Override
     public void resize(int width, int height) {
+        // Save the current state to memory
+        KlotskiGame.KlotskiPiece[] savedPieces = game.getPieces();
+        List<int[][]> savedMoveHistory = new ArrayList<>(moveHistory);
+        int savedCurrentMoveIndex = currentMoveIndex;
+        float savedElapsedTime = elapsedTime;
+
+        // Clear the stage and reinitialize
+        stage.clear();
         stage.getViewport().update(width, height, true);
+        create();
+
+        // Restore the saved state
+        game.setPieces(savedPieces);
+        moveHistory = savedMoveHistory;
+        currentMoveIndex = savedCurrentMoveIndex;
+        elapsedTime = savedElapsedTime;
+
+        // Update blocks and UI
+        updateBlocksFromGame(game);
+        movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+        int minutes = (int) (elapsedTime / 60);
+        int seconds = (int) (elapsedTime % 60);
+        timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
     }
 
     @Override
@@ -626,18 +651,26 @@ public class GameScreen extends ApplicationAdapter implements Screen {
 
         // Ensure the group is drawn on top
         congratulationsGroup.setZIndex(Integer.MAX_VALUE);
+    
+        // Add a semi-transparent gray background
+        Image background = new Image(skin.newDrawable("white", new Color(0, 0, 0, 0.5f))); // Semi-transparent gray
+        background.setSize(stageWidth / 1.7f, stageHeight / 2f); // Half the size of the stage
+        background.setPosition(-stageWidth / 3.4f, -stageHeight / 4f); // Center the background
+        congratulationsGroup.addActor(background);
 
         Table congratsTable = new Table();
         congratsTable.setFillParent(true);
         congratsTable.center(); // Ensure the table is centered
 
         // Add congratulatory message
-        congratsLabel = new Label("Congratulations! You Win!", skin);
+        Label.LabelStyle narrationStyle = skin.get("narration", Label.LabelStyle.class);
+        congratsLabel = new Label("Congratulations! You Win!", narrationStyle);
         congratsLabel.setFontScale(2); // Make the text larger
         congratsTable.add(congratsLabel).padBottom(20).row();
 
         // Add time usage placeholder
-        Label timerLabelCongrats = new Label("Time: 00:00", skin); // Placeholder for time usage
+        Label.LabelStyle altStyle = skin.get("alt", Label.LabelStyle.class);
+        Label timerLabelCongrats = new Label("Time: 00:00", altStyle); // Placeholder for time usage
         timerLabelCongrats.setFontScale(1.5f);
         congratsTable.add(timerLabelCongrats).padBottom(20).row();
 

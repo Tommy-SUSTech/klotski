@@ -30,7 +30,7 @@ public class MainScreen implements Screen {
         Gdx.input.setInputProcessor(stage);
 
         // Load the skin for UI components
-        skin = new Skin(Gdx.files.internal("skins/default/skin/uiskin.json"));
+        skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
 
         // Create a table for layout
         Table table = new Table();
@@ -38,15 +38,19 @@ public class MainScreen implements Screen {
         stage.addActor(table);
 
         // Add a title label
-        Label titleLabel = new Label("Klotski Game", skin);
-        titleLabel.setFontScale(2); // Make the title larger
+        Label.LabelStyle titleStyle = skin.get("title", Label.LabelStyle.class);
+        Label titleLabel = new Label("Klotski Game", titleStyle);
+        titleLabel.setFontScale(1.5f); // Make the title larger
+        titleLabel.setColor(Color.WHITE); // Set the title color to white
         table.add(titleLabel).padBottom(50).row();
 
         // Add a greeting label
+        Label.LabelStyle narrationStyle = skin.get("narration", Label.LabelStyle.class);
         String username = klotski.getLoggedInUser();
         String greetingText = username != null ? "Welcome, " + username + "!" : "Welcome, Guest!";
-        this.greetingLabel = new Label(greetingText, skin);
-        greetingLabel.setFontScale(1.5f);
+        this.greetingLabel = new Label(greetingText, narrationStyle);
+        greetingLabel.setFontScale(2.0f);
+        greetingLabel.setColor(Color.WHITE); // Set the title color to white
         table.add(greetingLabel).padBottom(30).row();
 
         // Add a "Play" button
