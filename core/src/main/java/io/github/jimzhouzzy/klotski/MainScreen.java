@@ -33,6 +33,7 @@ public class MainScreen implements Screen {
     final Klotski klotski;
     private int frameCount;
     private int frameCountOffset;
+    private float baseTileSize;
     private Stage stage;
     private Skin skin;
     private Label greetingLabel; // Label to display the greeting message
@@ -49,6 +50,8 @@ public class MainScreen implements Screen {
     private boolean moveShifted;
     private boolean moveUpward;
     private boolean moveDownward;
+    private Color currentColor = new Color(0, 0, 1, 1); // Start with blue
+    private float colorChangeSpeed = 0.02f; // Speed of color change
     public Color[] colorList; // Predefined list of colors
 
     public MainScreen(final Klotski klotski) {
@@ -63,7 +66,9 @@ public class MainScreen implements Screen {
         moveUpward = false;
         moveDownward = false;
         
-        offsetX = 0f;
+        baseTileSize = 50f;
+
+        offsetX = baseTileSize / 2;
         offsetY = 0f;
         offsetZ = 0f;
 
@@ -98,6 +103,7 @@ public class MainScreen implements Screen {
                         moveRight = true;
                         break;
                     case Input.Keys.SHIFT_LEFT:
+                    case Input.Keys.SHIFT_RIGHT:
                         moveShifted = true;
                         break;
                     case Input.Keys.CONTROL_LEFT:
@@ -130,6 +136,7 @@ public class MainScreen implements Screen {
                         moveRight = false;
                         break;
                     case Input.Keys.SHIFT_LEFT:
+                    case Input.Keys.SHIFT_RIGHT:
                         moveShifted = false;
                         break;
                     case Input.Keys.CONTROL_LEFT:
@@ -252,15 +259,15 @@ public class MainScreen implements Screen {
 
         float screenWidth = Gdx.graphics.getWidth();
         float screenHeight = Gdx.graphics.getHeight();
-        float baseTileSize = 50; // Base tile size
     
         float focalLength = 300.0f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Focal length for perspective projection
         float centerX = screenWidth / 2f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f));
         float centerZ = (screenHeight + offsetZ) / 3.75f * (1 - 0.5f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Center Y position for perspective projection
-
-        for (float y = -offsetY - 2 * baseTileSize; y < screenHeight + 15 * baseTileSize; y += baseTileSize) {
-            for (float x = -offsetX - 9 * baseTileSize; x <= screenWidth + 10 * baseTileSize; x += baseTileSize) {
-                if (x < 0 - 10 * baseTileSize|| x > screenWidth + 10 * baseTileSize || y < 0 - 1 * baseTileSize || y > screenHeight + 15 * baseTileSize) {
+        
+        System.out.println("offsetX: " + offsetX + ", offsetY: " + offsetY + ", offsetZ: " + offsetZ);
+        for (float y = -offsetY - 2f * baseTileSize; y < screenHeight + 15f * baseTileSize; y += baseTileSize) {
+            for (float x = -offsetX - 10f * baseTileSize; x <= -offsetX + screenWidth + 10f * baseTileSize; x += baseTileSize) {
+                if (x < 0f - 10f * baseTileSize || x > screenWidth + 10f * baseTileSize || y < 0f - 1f * baseTileSize || y > screenHeight + 15f * baseTileSize) {
                     continue; // Skip tiles outside the screen
                 }
 
@@ -271,10 +278,10 @@ public class MainScreen implements Screen {
                 Vector2 br = projectPerspective(x + baseTileSize, y + baseTileSize, focalLength, centerX, centerZ);
         
                 // Generate a unique key for the current tile
-                String key = (int) ((int)Math.floor(x / baseTileSize) + (int) Math.floor(offsetX / baseTileSize)) + "," + (int) ((int) Math.floor(y / baseTileSize) + (int) Math.floor(offsetY / baseTileSize));
+                String key = (int) ((int) Math.floor(x / baseTileSize) + (int) Math.floor(offsetX / baseTileSize)) + "," + (int) ((int) Math.floor(y / baseTileSize) + (int) Math.floor(offsetY / baseTileSize));
 
                 // Get or generate a random color for the tile
-                Color tileColor = colorCache.computeIfAbsent(key, k -> new Color(random.nextFloat(), random.nextFloat(), random.nextFloat(), 1f));
+                Color tileColor = colorCache.computeIfAbsent(key, k -> generateSimilarColor(getSmoothChangingColor()));
                 if (klotski.klotskiTheme == klotski.klotskiTheme.DARK) {
                     tileColor = new Color(tileColor.r * 0.65f, tileColor.g * 0.65f, tileColor.b * 0.65f, 1f);
                 }
@@ -355,8 +362,11 @@ public class MainScreen implements Screen {
         // Curently just get Light color, and dark is adopted when rendering
         colorList = klotski.getMainScreenLightColorList();
 
-        for (int i = -100; i <= 100; i++) {
-            for (int j = -100; j <= 100; j++) {
+        for (int i = -500; i <= 500; i++) {
+            // This control the length of defined color blocks
+            // currently we are not showing them, but we can use them to generate colors
+            // e.g. for (int j = -50; j <= 50; j++) {
+            for (int j = -50; j <= -5; j++) {
                 String key = i + "," + j;
                 if (!colorCache.containsKey(key)) {
                     Color chosenColor = colorList[random.nextInt(colorList.length)];
@@ -364,5 +374,54 @@ public class MainScreen implements Screen {
                 }
             }
         }
+    }
+
+    public Color generateSimilarColor(Color baseColor) {
+        Random random = new Random();
+    
+        Color newColor;
+        do {
+            // Generate small random offsets for RGB values
+            float redOffset = (random.nextFloat() - 0.5f) * 0.2f; // Offset between -0.1 and 0.1
+            float greenOffset = (random.nextFloat() - 0.5f) * 0.2f;
+            float blueOffset = (random.nextFloat() - 0.5f) * 0.2f;
+    
+            // Clamp the values to ensure they remain between 0 and 1
+            float newRed = Math.min(Math.max(baseColor.r + redOffset, 0), 1);
+            float newGreen = Math.min(Math.max(baseColor.g + greenOffset, 0), 1);
+            float newBlue = Math.min(Math.max(baseColor.b + blueOffset, 0), 1);
+    
+            // Create the new color
+            newColor = new Color(newRed, newGreen, newBlue, baseColor.a); // Preserve the alpha value
+        } while (calculateLuminance(newColor) < 0.3f); // Ensure the color is not too dark
+    
+        return newColor;
+    }
+    
+    public Color getSmoothChangingColor() {
+        Random random = new Random();
+    
+        Color newColor;
+        do {
+            // Generate small random increments for RGB values
+            float redIncrement = (random.nextFloat() - 0.5f) * colorChangeSpeed; // Offset between -speed and +speed
+            float greenIncrement = (random.nextFloat() - 0.5f) * colorChangeSpeed;
+            float blueIncrement = (random.nextFloat() - 0.5f) * colorChangeSpeed;
+    
+            // Update the current color
+            currentColor.r = Math.min(Math.max(currentColor.r + redIncrement, 0), 1);
+            currentColor.g = Math.min(Math.max(currentColor.g + greenIncrement, 0), 1);
+            currentColor.b = Math.min(Math.max(currentColor.b + blueIncrement, 0), 1);
+    
+            // Create the new color
+            newColor = new Color(currentColor.r, currentColor.g, currentColor.b, currentColor.a);
+        } while (calculateLuminance(newColor) < 0.3f); // Ensure the color is not too dark
+    
+        return newColor;
+    }
+
+    private float calculateLuminance(Color color) {
+        // Use the standard formula for relative luminance
+        return 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b;
     }
 }
