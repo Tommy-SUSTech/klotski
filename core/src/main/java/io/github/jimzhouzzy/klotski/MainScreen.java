@@ -32,6 +32,7 @@ public class MainScreen implements Screen {
 
     final Klotski klotski;
     private int frameCount;
+    private int frameCountOffset;
     private Stage stage;
     private Skin skin;
     private Label greetingLabel; // Label to display the greeting message
@@ -40,7 +41,7 @@ public class MainScreen implements Screen {
     private float offsetY;
     private float offsetZ;
     private Random random; 
-    private Map<String, Color> colorCache; // Cache for storing colors
+    public Map<String, Color> colorCache; // Cache for storing colors
     private boolean moveForward;
     private boolean moveBackward;
     private boolean moveLeft;
@@ -48,9 +49,12 @@ public class MainScreen implements Screen {
     private boolean moveShifted;
     private boolean moveUpward;
     private boolean moveDownward;
+    public Color[] colorList; // Predefined list of colors
 
     public MainScreen(final Klotski klotski) {
         this.klotski = klotski;
+        random = new Random();
+
         moveForward = false;
         moveBackward = false;
         moveRight = false;
@@ -64,6 +68,7 @@ public class MainScreen implements Screen {
         offsetZ = 0f;
 
         frameCount = 0;
+        frameCountOffset = random.nextInt(10000); // Random offset for the frame count
 
         create();
     }
@@ -140,25 +145,10 @@ public class MainScreen implements Screen {
 
         // Initialize ShapeRenderer
         shapeRenderer = new ShapeRenderer();
-        random = new Random();
         colorCache = new HashMap<>();
         
-        // Predefined list of colors
-        Color[] colorList = {
-            Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW,
-            Color.ORANGE, Color.MAGENTA, Color.CYAN, Color.PINK,
-            Color.GRAY
-        };
-
-        for (int i = -100; i <= 100; i++) {
-            for (int j = -100; j <= 100; j++) {
-                String key = i + "," + j;
-                if (!colorCache.containsKey(key)) {
-                    Color chosenColor = colorList[random.nextInt(colorList.length)];
-                    colorCache.put(key, chosenColor);
-                }
-            }
-        }
+        // Load colors
+        loadColors();
 
         // Load the skin for UI components
         skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
@@ -209,7 +199,7 @@ public class MainScreen implements Screen {
         settingsButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                klotski.setScreen(new SettingsScreen(klotski)); // Navigate to the SettingsScreen
+                klotski.setScreen(klotski.settingsScreen); // Navigate to the SettingsScreen
             }
         });
         table.add(settingsButton).width(200).height(50).padBottom(20).row();
@@ -231,7 +221,7 @@ public class MainScreen implements Screen {
         frameCount %= Integer.MAX_VALUE; // Avoid overflow
 
         // Clear the screen and set the background to light blue
-        ScreenUtils.clear(new Color(0.68f, 0.85f, 0.9f, 1));
+        ScreenUtils.clear(klotski.getBackgroundColor());
 
         float moveSpeed = 200.0f;
         if (moveShifted) {
@@ -264,12 +254,12 @@ public class MainScreen implements Screen {
         float screenHeight = Gdx.graphics.getHeight();
         float baseTileSize = 50; // Base tile size
     
-        float focalLength = 300.0f * (1 - 0.2f * (float) veryComplexFunction(frameCount / 5000f)); // Focal length for perspective projection
-        float centerX = screenWidth / 2f * (1 - 0.2f * (float) veryComplexFunction(frameCount / 5000f));
-        float centerZ = (screenHeight + offsetZ) / 3.75f * (1 - 0.5f * (float) veryComplexFunction(frameCount / 5000f)); // Center Y position for perspective projection
+        float focalLength = 300.0f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Focal length for perspective projection
+        float centerX = screenWidth / 2f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f));
+        float centerZ = (screenHeight + offsetZ) / 3.75f * (1 - 0.5f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Center Y position for perspective projection
 
         for (float y = -offsetY - 2 * baseTileSize; y < screenHeight + 15 * baseTileSize; y += baseTileSize) {
-            for (float x = -offsetX - 10 * baseTileSize; x <= screenWidth + 10 * baseTileSize; x += baseTileSize) {
+            for (float x = -offsetX - 9 * baseTileSize; x <= screenWidth + 10 * baseTileSize; x += baseTileSize) {
                 if (x < 0 - 10 * baseTileSize|| x > screenWidth + 10 * baseTileSize || y < 0 - 1 * baseTileSize || y > screenHeight + 15 * baseTileSize) {
                     continue; // Skip tiles outside the screen
                 }
@@ -280,20 +270,14 @@ public class MainScreen implements Screen {
                 Vector2 bl = projectPerspective(x, y + baseTileSize, focalLength, centerX, centerZ);
                 Vector2 br = projectPerspective(x + baseTileSize, y + baseTileSize, focalLength, centerX, centerZ);
         
-                // Draw the tile using the projected positions
-                shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-                shapeRenderer.setColor(Color.WHITE);
-                shapeRenderer.line(tl.x, tl.y, tr.x, tr.y);
-                shapeRenderer.line(tr.x, tr.y, br.x, br.y);
-                shapeRenderer.line(br.x, br.y, bl.x, bl.y);
-                shapeRenderer.line(bl.x, bl.y, tl.x, tl.y);
-                shapeRenderer.end();
-                
                 // Generate a unique key for the current tile
                 String key = (int) ((int)Math.floor(x / baseTileSize) + (int) Math.floor(offsetX / baseTileSize)) + "," + (int) ((int) Math.floor(y / baseTileSize) + (int) Math.floor(offsetY / baseTileSize));
 
                 // Get or generate a random color for the tile
                 Color tileColor = colorCache.computeIfAbsent(key, k -> new Color(random.nextFloat(), random.nextFloat(), random.nextFloat(), 1f));
+                if (klotski.klotskiTheme == klotski.klotskiTheme.DARK) {
+                    tileColor = new Color(tileColor.r * 0.65f, tileColor.g * 0.65f, tileColor.b * 0.65f, 1f);
+                }
                 shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
                 shapeRenderer.setColor(tileColor);
                 shapeRenderer.triangle(tl.x, tl.y, tr.x, tr.y, br.x, br.y);
@@ -320,7 +304,7 @@ public class MainScreen implements Screen {
         return new Vector2(screenX, screenY);
     }
 
-    // A very complext function in [0, 1] to shake the camera
+    // A very complex function in [0, 1] to shake the camera
     private static double veryComplexFunction(double x) {
         double term1 = 0.5 * (Math.sin(5 * Math.PI * x) * Math.cos(3 * Math.PI * x * x) + 1);
         double term2 = 0.1 * Math.sin(20 * Math.PI * x);
@@ -362,5 +346,23 @@ public class MainScreen implements Screen {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage); 
+    }
+    
+    public void loadColors() {
+        // Predefined list of colors
+        colorCache.clear();
+        
+        // Curently just get Light color, and dark is adopted when rendering
+        colorList = klotski.getMainScreenLightColorList();
+
+        for (int i = -100; i <= 100; i++) {
+            for (int j = -100; j <= 100; j++) {
+                String key = i + "," + j;
+                if (!colorCache.containsKey(key)) {
+                    Color chosenColor = colorList[random.nextInt(colorList.length)];
+                    colorCache.put(key, chosenColor);
+                }
+            }
+        }
     }
 }

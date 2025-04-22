@@ -5,10 +5,16 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.graphics.Color;
 
 import io.github.jimzhouzzy.klotski.GameWebSocketServer;
 
 import java.io.*;
+
+enum KlotskiTheme {
+    DARK,
+    LIGHT
+}
 
 public class Klotski extends Game {
 	private GameWebSocketServer webSocketServer;
@@ -20,7 +26,9 @@ public class Klotski extends Game {
     public GameScreen gameScreen;
     public MainScreen mainScreen;
     public WebServer webServer;
+    public SettingsScreen settingsScreen;
 
+    public KlotskiTheme klotskiTheme;
     private String loggedInUser; // Field to store the logged-in user's name
 
     public void create() {
@@ -36,6 +44,8 @@ public class Klotski extends Game {
         // Load the last logged-in user
         loadLoginStatus();
 
+        // After the user loading, settings screen must come first to load settings
+        this.settingsScreen = new SettingsScreen(this);
         this.mainScreen = new MainScreen(this);
         this.gameScreen = new GameScreen(this);
         
@@ -101,5 +111,55 @@ public class Klotski extends Game {
 
 	public GameWebSocketServer getWebSocketServer() {
         return webSocketServer;
+    }
+
+    public void setGlClearColor() {
+        if (klotskiTheme == KlotskiTheme.LIGHT)
+            Gdx.gl.glClearColor(0.68f, 0.85f, 0.9f, 1);
+        else
+            Gdx.gl.glClearColor(0.25f, 0.25f, 0.25f, 1);
+    }
+
+    public Color getBackgroundColor() {
+        if (klotskiTheme == KlotskiTheme.LIGHT)
+            return new Color(0.68f, 0.85f, 0.9f, 1);
+        else
+            return new Color(0.25f, 0.25f, 0.25f, 1);
+    }
+
+    public Color[] getMainScreenColorList() {
+        if (this.klotskiTheme == KlotskiTheme.LIGHT) {
+            Color[] colorList = {
+                Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW,
+                Color.ORANGE, Color.MAGENTA, Color.CYAN, Color.PINK,
+                Color.GRAY
+            };
+            return colorList;
+        } else {
+            Color[] colorList = {
+                Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW,
+                Color.ORANGE, Color.MAGENTA, Color.CYAN, Color.PINK,
+                Color.GRAY
+            };
+            for (int i = 0; i < colorList.length; i++) {
+                colorList[i].r = 0.5f * colorList[i].r;
+                colorList[i].g = 0.5f * colorList[i].g;
+                colorList[i].b = 0.5f * colorList[i].b;
+            }
+            return colorList;
+        }
+    }
+
+    public Color[] getMainScreenLightColorList() {
+        Color[] colorList = {
+            Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW,
+            Color.ORANGE, Color.MAGENTA, Color.CYAN, Color.PINK,
+            Color.GRAY
+        };
+        return colorList;
+    }
+
+    public void updateMainScreenColors() {
+        mainScreen.loadColors();
     }
 }

@@ -93,7 +93,7 @@ public class GameModeScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        ScreenUtils.clear(new Color(0.68f, 0.85f, 0.9f, 1));
+        ScreenUtils.clear(klotski.getBackgroundColor());
         stage.act(delta);
         stage.draw();
     }

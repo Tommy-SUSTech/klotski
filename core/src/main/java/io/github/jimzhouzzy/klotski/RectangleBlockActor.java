@@ -136,21 +136,69 @@ public class RectangleBlockActor extends Actor {
     @Override
     public void draw(Batch batch, float parentAlpha) {
         batch.end(); // End the batch to use ShapeRenderer
-
+    
         shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
+    
+        // Optional dynamic color for the rectangle
+        float time = (System.currentTimeMillis() % 10000) / 10000f; // 0 to 1 looping value
+        Color dynamicColor = new Color(
+            color.r * (0.9f + 0.1f * (float) Math.sin(2 * Math.PI * time)), // Dynamic red component
+            color.g * (0.9f + 0.1f * (float) Math.sin(2 * Math.PI * time + Math.PI / 3)), // Dynamic green component
+            color.b * (0.9f + 0.1f * (float) Math.sin(2 * Math.PI * time + 2 * Math.PI / 3)), // Dynamic blue component
+            1
+        );
+    
+        // Draw the main filled rectangle
+        // Define gradient colors for each corner
+        Color bottomLeftColor = dynamicColor.cpy().mul(0.8f); // Slightly darker
+        Color bottomRightColor = dynamicColor.cpy().mul(0.9f); // Slightly darker
+        Color topLeftColor = dynamicColor.cpy().mul(1.1f); // Slightly lighter
+        Color topRightColor = dynamicColor.cpy().mul(1.2f); // Slightly lighter
 
-        // Draw the filled rectangle (block)
+        // Draw the gradient-filled rectangle
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(color);
-        shapeRenderer.rect(getX(), getY(), getWidth(), getHeight());
+        shapeRenderer.rect(
+            getX(), getY(), getWidth(), getHeight(),
+            bottomLeftColor, bottomRightColor, topRightColor, topLeftColor
+        );
         shapeRenderer.end();
-
+    
+        // Add shadow effect (bottom-right gradient)
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(dynamicColor.cpy().mul(0.6f)); // Darker shadow color
+        shapeRenderer.triangle(
+            getX(), getY(), // Bottom-left corner
+            getX() + getWidth(), getY(), // Bottom-right corner
+            getX() + getWidth() - 5, getY() + 5 // Slight offset for shadow
+        );
+        shapeRenderer.triangle(
+            getX(), getY(), // Bottom-left corner
+            getX(), getY() + getHeight(), // Top-left corner
+            getX() + 5, getY() + getHeight() - 5 // Slight offset for shadow
+        );
+        shapeRenderer.end();
+    
+        // Add highlight effect (top-left gradient)
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(dynamicColor.cpy().mul(1.2f)); // Lighter highlight color
+        shapeRenderer.triangle(
+            getX(), getY() + getHeight(), // Top-left corner
+            getX() + getWidth(), getY() + getHeight(), // Top-right corner
+            getX() + getWidth() - 5, getY() + getHeight() - 5 // Slight offset for highlight
+        );
+        shapeRenderer.triangle(
+            getX(), getY() + getHeight(), // Top-left corner
+            getX(), getY(), // Bottom-left corner
+            getX() + 5, getY() + 5 // Slight offset for highlight
+        );
+        shapeRenderer.end();
+    
         // Draw the border (outline)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(Color.BLACK); // Border color
+        shapeRenderer.setColor(dynamicColor.cpy().mul(0.7f)); // Slightly darker border color
         shapeRenderer.rect(getX(), getY(), getWidth(), getHeight());
         shapeRenderer.end();
-
+    
         batch.begin(); // Restart the batch
     }
 

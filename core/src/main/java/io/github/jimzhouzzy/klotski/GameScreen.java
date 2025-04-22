@@ -191,14 +191,18 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         currentMoveIndex = -1; // No moves yet
 
         // Add timer label under the buttons
-        Label.LabelStyle defaultStyle = skin.get("default", Label.LabelStyle.class);
-        timerLabel = new Label("Time: 00:00", defaultStyle);
+        Label.LabelStyle timeLabelStyle;
+        if (klotski.klotskiTheme == KlotskiTheme.LIGHT)
+            timeLabelStyle = skin.get("default", Label.LabelStyle.class);
+        else
+            timeLabelStyle = skin.get("default-white", Label.LabelStyle.class);
+        timerLabel = new Label("Time: 00:00", timeLabelStyle);
         timerLabel.setFontScale(1.2f);
         timerLabel.setAlignment(Align.center);
         buttonTable.add(timerLabel).width(100).pad(10).row();
 
         // Add moves label under the timer
-        movesLabel = new Label("Moves: 0", defaultStyle);
+        movesLabel = new Label("Moves: 0", timeLabelStyle);
         movesLabel.setFontScale(1.2f);
         movesLabel.setAlignment(Align.center);
         buttonTable.add(movesLabel).width(100).pad(10).row();
@@ -216,7 +220,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                     case Input.Keys.R:
                         handleRestart(game); // Handle restart when R is pressed
                         return true;
-                    case Input.Keys.H:
+                    case Input.Keys.I:
                         handleHint(game); // Handle hint when H is pressed
                         return true;
                     case Input.Keys.U:
@@ -246,18 +250,22 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                             handleAutoSolve(game, autoButton); // Start auto-solving
                         }
                         return true;
+                    case Input.Keys.L:
                     case Input.Keys.LEFT:
                         // Handle left arrow key for moving blocks
                         handleArrowKeys(new int[] {0, -1});
                         return true;
+                    case Input.Keys.K:
                     case Input.Keys.UP:
                         // Handle left arrow key for moving blocks
                         handleArrowKeys(new int[] {-1, 0});
                         return true;
+                    case Input.Keys.H:
                     case Input.Keys.RIGHT:
                         // Handle left arrow key for moving blocks
                         handleArrowKeys(new int[] {0, 1});
                         return true;
+                    case Input.Keys.J:
                     case Input.Keys.DOWN:
                         // Handle left arrow key for moving blocks
                         handleArrowKeys(new int[] {1, 0});
@@ -302,21 +310,21 @@ public class GameScreen extends ApplicationAdapter implements Screen {
     private Color getColorForPiece(int id) {
         switch (id) {
             case 0:
-                return Color.RED; // Cao Cao
+                return new Color(0.95f, 0.25f, 0.25f, 1); // Soft red for Cao Cao
             case 1:
-                return Color.BLUE; // Guan Yu
+                return new Color(0.25f, 0.25f, 0.95f, 1); // Soft blue for Guan Yu
             case 2:
             case 3:
             case 4:
             case 5:
-                return Color.GREEN; // Generals
+                return new Color(204f/255f, 51f/255f, 255f/255f, 1); // Soft purple for Generals
             case 6:
             case 7:
             case 8:
             case 9:
-                return Color.YELLOW; // Soldiers
+                return new Color(0.95f, 0.95f, 0.25f, 1); // Soft yellow for Soldiers
             default:
-                return Color.GRAY; // Default color
+                return new Color(0.8f, 0.8f, 0.8f, 1); // Light gray for default
         }
     }
 
@@ -384,7 +392,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         cellSize = Math.min(Gdx.graphics.getWidth() / (float) cols, Gdx.graphics.getHeight() / (float) rows);
 
         // Clear the screen
-        Gdx.gl.glClearColor(0.68f, 0.85f, 0.9f, 1);
+        klotski.setGlClearColor();
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         // Handle 3min-Attack mode
@@ -686,8 +694,18 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 congratulationsGroup.setVisible(false); // Hide the congratulations screen
             }
         });
-        congratsTable.add(restartButton).width(150).height(50);
+        congratsTable.add(restartButton).width(200).height(50);
 
+        // Add exit button
+        TextButton exitButton = new TextButton("exit", skin);
+        exitButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                handleExit();
+            }
+        });
+        congratsTable.add(restartButton).width(200).height(50);
+        
         // Add the table to the group
         congratulationsGroup.addActor(congratsTable);
 

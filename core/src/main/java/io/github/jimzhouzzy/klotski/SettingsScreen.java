@@ -52,9 +52,13 @@ public class SettingsScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
                 if (darkModeCheckBox.isChecked()) {
                     isDarkMode = true;
+                    klotski.klotskiTheme = KlotskiTheme.DARK;
+                    klotski.updateMainScreenColors();
                     Gdx.app.log("Settings", "Dark mode enabled");
                 } else {
                     isDarkMode = false;
+                    klotski.klotskiTheme = KlotskiTheme.LIGHT;
+                    klotski.updateMainScreenColors();
                     Gdx.app.log("Settings", "Light mode enabled");
                 }
                 saveSettings();
@@ -123,16 +127,18 @@ public class SettingsScreen implements Screen {
             settings = getDefaultSettings();
             isDarkMode = (boolean) settings.get("isDarkMode");
         }
+
+        // Set Klotski.klotskiTheme based on isDarkMode
+        if (isDarkMode) {
+            klotski.klotskiTheme = KlotskiTheme.DARK;
+        } else {
+            klotski.klotskiTheme = KlotskiTheme.LIGHT;
+        }
     }
 
     @Override
     public void render(float delta) {
-        // Clear the screen with the appropriate background color
-        if (isDarkMode) {
-            Gdx.gl.glClearColor(0.3f, 0.3f, 0.3f, 1); // Dark background
-        } else {
-            Gdx.gl.glClearColor(0.68f, 0.85f, 0.9f, 1); // Light background
-        }
+        klotski.setGlClearColor();
         Gdx.gl.glClear(Gdx.gl.GL_COLOR_BUFFER_BIT);
 
         // Render the stage
