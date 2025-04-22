@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.audio.Music;
 
 import io.github.jimzhouzzy.klotski.GameWebSocketServer;
 
@@ -27,6 +28,7 @@ public class Klotski extends Game {
     public MainScreen mainScreen;
     public WebServer webServer;
     public SettingsScreen settingsScreen;
+    private Music backgroundMusic;
 
     public KlotskiTheme klotskiTheme;
     private String loggedInUser; // Field to store the logged-in user's name
@@ -48,17 +50,25 @@ public class Klotski extends Game {
         this.settingsScreen = new SettingsScreen(this);
         this.mainScreen = new MainScreen(this);
         this.gameScreen = new GameScreen(this);
-        
         this.setScreen(mainScreen);
-
+        
+        // Load the music file
+        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/soundtrack.ogg"));
+        backgroundMusic.setLooping(true);
+        backgroundMusic.setVolume(1f);
+        backgroundMusic.play();
+        
+        // Start web socket server
 		webSocketServer = new GameWebSocketServer(8014);
         webSocketServer.start();
 
+        // Start html web server
         try {
             webServer = new WebServer(8013);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        
     }
 
     public String getLoggedInUser() {
