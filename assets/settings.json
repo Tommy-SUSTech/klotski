@@ -1,0 +1,10 @@
+{
+isDarkMode: {
+	class: java.lang.Boolean
+	value: true
+}
+username: {
+	class: java.lang.String
+	value: bob
+}
+}

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -23,28 +24,119 @@ import io.github.jimzhouzzy.klotski.GameModeScreen;
 import io.github.jimzhouzzy.klotski.LoginScreen;
 
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.EventListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 
 public class MainScreen implements Screen {
 
     final Klotski klotski;
+    private int frameCount;
     private Stage stage;
     private Skin skin;
     private Label greetingLabel; // Label to display the greeting message
     private ShapeRenderer shapeRenderer;
     private float offsetX; // Offset for translation animation
-    private float offsetY; // Offset for vertical translation animation
+    private float offsetY;
+    private float offsetZ;
     private Random random; 
     private Map<String, Color> colorCache; // Cache for storing colors
+    private boolean moveForward;
+    private boolean moveBackward;
+    private boolean moveLeft;
+    private boolean moveRight;
+    private boolean moveShifted;
+    private boolean moveUpward;
+    private boolean moveDownward;
 
     public MainScreen(final Klotski klotski) {
         this.klotski = klotski;
+        moveForward = false;
+        moveBackward = false;
+        moveRight = false;
+        moveLeft = false;
+        moveShifted = false;
+        moveUpward = false;
+        moveDownward = false;
+        
+        offsetX = 0f;
+        offsetY = 0f;
+        offsetZ = 0f;
+
+        frameCount = 0;
+
         create();
     }
 
     public void create() {
         this.stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+
+        stage.addListener(new InputListener() {
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                switch (keycode) {
+                    case Input.Keys.W: // Move forward
+                    case Input.Keys.UP:
+                        moveForward = true;
+                        break;
+                    case Input.Keys.S: // Move backward
+                    case Input.Keys.DOWN:
+                        moveBackward = true;
+                        break;
+                    case Input.Keys.A: // Move left
+                    case Input.Keys.LEFT:
+                        moveLeft = true;
+                        break;
+                    case Input.Keys.D: // Move right
+                    case Input.Keys.RIGHT:
+                        moveRight = true;
+                        break;
+                    case Input.Keys.SHIFT_LEFT:
+                        moveShifted = true;
+                        break;
+                    case Input.Keys.CONTROL_LEFT:
+                        moveDownward = true;
+                        break;
+                    case Input.Keys.SPACE:
+                        moveUpward = true;
+                        break;
+                }
+                return true; // Indicate the event was handled
+            }
+
+            @Override
+            public boolean keyUp(InputEvent event, int keycode) {
+                switch (keycode) {
+                    case Input.Keys.W:
+                    case Input.Keys.UP:
+                        moveForward = false;
+                        break;
+                    case Input.Keys.S:
+                    case Input.Keys.DOWN:
+                        moveBackward = false;
+                        break;
+                    case Input.Keys.A:
+                    case Input.Keys.LEFT:
+                        moveLeft = false;
+                        break;
+                    case Input.Keys.D:
+                    case Input.Keys.RIGHT:
+                        moveRight = false;
+                        break;
+                    case Input.Keys.SHIFT_LEFT:
+                        moveShifted = false;
+                        break;
+                    case Input.Keys.CONTROL_LEFT:
+                        moveDownward = false;
+                        break;
+                    case Input.Keys.SPACE:
+                        moveUpward = false;
+                        break;
+                }
+                return true;
+            }
+        });
 
         // Initialize ShapeRenderer
         shapeRenderer = new ShapeRenderer();
@@ -112,6 +204,16 @@ public class MainScreen implements Screen {
         });
         table.add(loginButton).width(200).height(50).padBottom(20).row();
 
+        // Add a "Settings" button
+        TextButton settingsButton = new TextButton("Settings", skin);
+        settingsButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                klotski.setScreen(new SettingsScreen(klotski)); // Navigate to the SettingsScreen
+            }
+        });
+        table.add(settingsButton).width(200).height(50).padBottom(20).row();
+
         // Add an "Exit" button
         TextButton exitButton = new TextButton("Exit", skin);
         exitButton.addListener(new ClickListener() {
@@ -125,32 +227,58 @@ public class MainScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // Clear the screen and set the background to blue
-        ScreenUtils.clear(Color.BLUE);
+        frameCount ++;
+        frameCount %= Integer.MAX_VALUE; // Avoid overflow
+
+        // Clear the screen and set the background to light blue
+        ScreenUtils.clear(new Color(0.68f, 0.85f, 0.9f, 1));
+
+        float moveSpeed = 200.0f;
+        if (moveShifted) {
+            moveSpeed = 3 * moveSpeed;
+        }
+        if (moveForward) {
+            offsetY += delta * moveSpeed;
+        }
+        if (moveBackward) {
+            offsetY -= delta * moveSpeed;
+        }
+        if (moveRight) {
+            offsetX += delta * moveSpeed;
+        }
+        if (moveLeft) {
+            offsetX -= delta * moveSpeed;
+        }
+        if (moveUpward){
+            offsetZ += 3 * delta * moveSpeed;
+        }
+        if (moveDownward) {
+            offsetZ -= 3 * delta * moveSpeed;
+        }
 
         // Update offsets for diagonal translation animation (45-degree movement)
-        offsetX += delta * 50; // Move 50 pixels per second horizontally
+        // offsetX += delta * 20; // Move 20 pixels per second horizontally
         offsetY += delta * 50; // Move 50 pixels per second vertically
 
         float screenWidth = Gdx.graphics.getWidth();
         float screenHeight = Gdx.graphics.getHeight();
         float baseTileSize = 50; // Base tile size
     
-        float focalLength = 300; // Focal length for perspective projection
-        float centerX = screenWidth / 2f;
-        float centerY = screenHeight / 3f; // Center Y position for perspective projection
+        float focalLength = 300.0f * (1 - 0.2f * (float) veryComplexFunction(frameCount / 5000f)); // Focal length for perspective projection
+        float centerX = screenWidth / 2f * (1 - 0.2f * (float) veryComplexFunction(frameCount / 5000f));
+        float centerZ = (screenHeight + offsetZ) / 3.75f * (1 - 0.5f * (float) veryComplexFunction(frameCount / 5000f)); // Center Y position for perspective projection
 
-        for (float y = -offsetY - 10 * baseTileSize; y < screenHeight + 10 * baseTileSize; y += baseTileSize) {
+        for (float y = -offsetY - 2 * baseTileSize; y < screenHeight + 15 * baseTileSize; y += baseTileSize) {
             for (float x = -offsetX - 10 * baseTileSize; x <= screenWidth + 10 * baseTileSize; x += baseTileSize) {
-                if (x < 0 - 10 * baseTileSize|| x > screenWidth + 10 * baseTileSize || y < 0 - 1 * baseTileSize || y > screenHeight + 5 * baseTileSize) {
+                if (x < 0 - 10 * baseTileSize|| x > screenWidth + 10 * baseTileSize || y < 0 - 1 * baseTileSize || y > screenHeight + 15 * baseTileSize) {
                     continue; // Skip tiles outside the screen
                 }
 
                 // Calculate the projected positions for the four corners of the tile
-                Vector2 tl = projectPerspective(x, y, focalLength, centerX, centerY);
-                Vector2 tr = projectPerspective(x + baseTileSize, y, focalLength, centerX, centerY);
-                Vector2 bl = projectPerspective(x, y + baseTileSize, focalLength, centerX, centerY);
-                Vector2 br = projectPerspective(x + baseTileSize, y + baseTileSize, focalLength, centerX, centerY);
+                Vector2 tl = projectPerspective(x, y, focalLength, centerX, centerZ);
+                Vector2 tr = projectPerspective(x + baseTileSize, y, focalLength, centerX, centerZ);
+                Vector2 bl = projectPerspective(x, y + baseTileSize, focalLength, centerX, centerZ);
+                Vector2 br = projectPerspective(x + baseTileSize, y + baseTileSize, focalLength, centerX, centerZ);
         
                 // Draw the tile using the projected positions
                 shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -185,11 +313,23 @@ public class MainScreen implements Screen {
     }
 
     // Projection 'Matrix'
-    public Vector2 projectPerspective(float x, float y, float focal, float cx, float cy) {
+    private Vector2 projectPerspective(float x, float y, float focal, float cx, float cy) {
         float scale = focal / (focal + y);
         float screenX = cx + (x - cx) * scale;
         float screenY = cy + (y - cy) * scale;
         return new Vector2(screenX, screenY);
+    }
+
+    // A very complext function in [0, 1] to shake the camera
+    private static double veryComplexFunction(double x) {
+        double term1 = 0.5 * (Math.sin(5 * Math.PI * x) * Math.cos(3 * Math.PI * x * x) + 1);
+        double term2 = 0.1 * Math.sin(20 * Math.PI * x);
+        return term1 * Math.exp(-x) + term2;
+    }
+
+    private static double veryComplexFunction(float x) {
+        double temp = (double) x;
+        return veryComplexFunction(temp);
     }
 
     @Override
@@ -203,7 +343,7 @@ public class MainScreen implements Screen {
     public void dispose() {
         stage.dispose();
         skin.dispose();
-        shapeRenderer.dispose(); // Dispose ShapeRenderer resources
+        shapeRenderer.dispose();
     }
 
     @Override

@@ -191,14 +191,14 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         currentMoveIndex = -1; // No moves yet
 
         // Add timer label under the buttons
-        Label.LabelStyle defaultWhiteStyle = skin.get("default-white", Label.LabelStyle.class);
-        timerLabel = new Label("Time: 00:00", defaultWhiteStyle);
+        Label.LabelStyle defaultStyle = skin.get("default", Label.LabelStyle.class);
+        timerLabel = new Label("Time: 00:00", defaultStyle);
         timerLabel.setFontScale(1.2f);
         timerLabel.setAlignment(Align.center);
         buttonTable.add(timerLabel).width(100).pad(10).row();
 
         // Add moves label under the timer
-        movesLabel = new Label("Moves: 0", defaultWhiteStyle);
+        movesLabel = new Label("Moves: 0", defaultStyle);
         movesLabel.setFontScale(1.2f);
         movesLabel.setAlignment(Align.center);
         buttonTable.add(movesLabel).width(100).pad(10).row();
@@ -384,7 +384,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         cellSize = Math.min(Gdx.graphics.getWidth() / (float) cols, Gdx.graphics.getHeight() / (float) rows);
 
         // Clear the screen
-        Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
+        Gdx.gl.glClearColor(0.68f, 0.85f, 0.9f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         // Handle 3min-Attack mode

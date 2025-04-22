@@ -19,6 +19,7 @@ public class Klotski extends Game {
     public FitViewport viewport;
     public GameScreen gameScreen;
     public MainScreen mainScreen;
+    public WebServer webServer;
 
     private String loggedInUser; // Field to store the logged-in user's name
 
@@ -42,6 +43,12 @@ public class Klotski extends Game {
 
 		webSocketServer = new GameWebSocketServer(8014);
         webSocketServer.start();
+
+        try {
+            webServer = new WebServer(8013);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public String getLoggedInUser() {
@@ -88,6 +95,8 @@ public class Klotski extends Game {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        webSocketServer.close();
+        webServer.close();
     }
 
 	public GameWebSocketServer getWebSocketServer() {

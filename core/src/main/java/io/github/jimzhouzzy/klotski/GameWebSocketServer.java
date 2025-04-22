@@ -50,4 +50,23 @@ public class GameWebSocketServer extends WebSocketServer {
             }
         }
     }
+
+    public void close() {
+        try {
+            // Close all active WebSocket connections
+            synchronized (connections) {
+                for (WebSocket conn : connections) {
+                    conn.close(1000, "Server shutting down"); // Close with normal closure code
+                }
+                connections.clear(); // Clear the connections set
+            }
+    
+            // Stop the WebSocket server
+            stop();
+            System.out.println("WebSocket server stopped.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error while closing WebSocket server: " + e.getMessage());
+        }
+    }
 }
