@@ -63,11 +63,42 @@ public class RectangleBlockActor extends Actor {
                     gameScreen.stopAutoSolving(); // Stop auto-solving if the user interacts with a block
                 }
 
+                // Store old values
+                float oldX = getX();
+                float oldY = getY();
+
                 float newX = getX() + x - offsetX;
                 float newY = getY() + y - offsetY;
 
                 // Get the boundaries for this block
                 float[] boundaries = gameScreen.getBoundaryForBlock(RectangleBlockActor.this);
+
+                // Adjust position if it meets two boundaries
+                if (newX == boundaries[0] && newY == boundaries[2]) { // At (minX, minY)
+                    if (boundaries[0] + getWidth() <= boundaries[1]) {
+                        newX += 1; // Move slightly right if within maxX
+                    } else if (boundaries[2] + getHeight() <= boundaries[3]) {
+                        newY += 1; // Move slightly up if within maxY
+                    }
+                } else if (newX == boundaries[0] && newY + getHeight() == boundaries[3]) { // At (minX, maxY)
+                    if (boundaries[0] + getWidth() <= boundaries[1]) {
+                        newX += 1; // Move slightly right if within maxX
+                    } else if (boundaries[2] <= boundaries[3] - getHeight()) {
+                        newY -= 1; // Move slightly down if within minY
+                    }
+                } else if (newX + getWidth() == boundaries[1] && newY == boundaries[2]) { // At (maxX, minY)
+                    if (boundaries[0] <= boundaries[1] - getWidth()) {
+                        newX -= 1; // Move slightly left if within minX
+                    } else if (boundaries[2] + getHeight() <= boundaries[3]) {
+                        newY += 1; // Move slightly up if within maxY
+                    }
+                } else if (newX + getWidth() == boundaries[1] && newY + getHeight() == boundaries[3]) { // At (maxX, maxY)
+                    if (boundaries[0] <= boundaries[1] - getWidth()) {
+                        newX -= 1; // Move slightly left if within minX
+                    } else if (boundaries[2] <= boundaries[3] - getHeight()) {
+                        newY -= 1; // Move slightly down if within minY
+                    }
+                }
                 float minX = boundaries[0];
                 float maxX = boundaries[1];
                 float minY = boundaries[2];
@@ -76,6 +107,12 @@ public class RectangleBlockActor extends Actor {
                 // Constrain the block within the calculated boundaries
                 newX = Math.max(minX, Math.min(newX, maxX));
                 newY = Math.max(minY, Math.min(newY, maxY));
+
+                // Must be x-y direction moevement
+                if (!(Math.abs(newX - oldX) < 0.001 || Math.abs(newY - oldY) < 0.001)) {
+                    newY = oldY; // Keep the old Y position
+                    newX = oldX; // Keep the old X position
+                }
 
                 setPosition(newX, newY);
                 rectangle.setPosition(newX, newY);

@@ -2,10 +2,13 @@ package io.github.jimzhouzzy.klotski;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Cursor;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.audio.Music;
 
 import io.github.jimzhouzzy.klotski.GameWebSocketServer;
@@ -53,7 +56,7 @@ public class Klotski extends Game {
         this.setScreen(mainScreen);
         
         // Load the music file
-        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/soundtrack.ogg"));
+        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/soundtrack.mp3"));
         backgroundMusic.setLooping(true);
         backgroundMusic.setVolume(1f);
         backgroundMusic.play();
@@ -69,6 +72,20 @@ public class Klotski extends Game {
             e.printStackTrace();
         }
         
+        // Set custom cursor
+        Pixmap originalPixmap = new Pixmap(Gdx.files.internal("assets/image/cursor.png"));
+
+        Pixmap resizedPixmap = new Pixmap(32, 32, originalPixmap.getFormat());
+        resizedPixmap.drawPixmap(originalPixmap,
+            0, 0, originalPixmap.getWidth(), originalPixmap.getHeight(), 
+            0, 0, resizedPixmap.getWidth(), resizedPixmap.getHeight() 
+        );
+
+        int xHotspot = 7, yHotspot = 1;
+        Cursor cursor = Gdx.graphics.newCursor(resizedPixmap, xHotspot, yHotspot);
+        resizedPixmap.dispose(); 
+        originalPixmap.dispose();
+        Gdx.graphics.setCursor(cursor);
     }
 
     public String getLoggedInUser() {

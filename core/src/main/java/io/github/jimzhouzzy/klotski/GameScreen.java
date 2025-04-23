@@ -12,6 +12,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.math.MathUtils;
@@ -25,6 +26,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -273,6 +275,40 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 }
                 return false;
             }
+
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                Pixmap clickedPixmap = new Pixmap(Gdx.files.internal("assets/image/clicked.png"));
+
+                Pixmap resizedClickedPixmap = new Pixmap(32, 32, clickedPixmap.getFormat());
+                resizedClickedPixmap.drawPixmap(clickedPixmap,
+                        0, 0, clickedPixmap.getWidth(), clickedPixmap.getHeight(),
+                        0, 0, resizedClickedPixmap.getWidth(), resizedClickedPixmap.getHeight());
+
+                int xHotspot = 7, yHotspot = 1;
+                Cursor clickedCursor = Gdx.graphics.newCursor(resizedClickedPixmap, xHotspot, yHotspot);
+                resizedClickedPixmap.dispose();
+                clickedPixmap.dispose();
+                Gdx.graphics.setCursor(clickedCursor);
+
+                return true;
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                Pixmap clickedPixmap = new Pixmap(Gdx.files.internal("assets/image/cursor.png"));
+
+                Pixmap resizedClickedPixmap = new Pixmap(32, 32, clickedPixmap.getFormat());
+                resizedClickedPixmap.drawPixmap(clickedPixmap,
+                        0, 0, clickedPixmap.getWidth(), clickedPixmap.getHeight(),
+                        0, 0, resizedClickedPixmap.getWidth(), resizedClickedPixmap.getHeight());
+
+                int xHotspot = 7, yHotspot = 1;
+                Cursor clickedCursor = Gdx.graphics.newCursor(resizedClickedPixmap, xHotspot, yHotspot);
+                resizedClickedPixmap.dispose();
+                clickedPixmap.dispose();
+                Gdx.graphics.setCursor(clickedCursor);
+            }
         });
 
         broadcastGameState();
@@ -282,6 +318,9 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         List<int[][]> legalMoves = game.getLegalMovesByDirection(direction);
         if (legalMoves.isEmpty()) {
             return;
+        }
+        if (isAutoSolving) {
+            stopAutoSolving();
         }
         int[][] move = legalMoves.get(0);
         int fromRow = move[0][0];
@@ -293,13 +332,13 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             if (piece.getRow() == fromRow && piece.getCol() == fromCol) {
                 float targetX = toCol * cellSize;
                 float targetY = (rows - toRow - piece.height) * cellSize; // Invert y-axis
+                game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                piece.setPosition(new int[] { toRow, toCol });
+                recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                isTerminal = game.isTerminal(); // Check if the game is in a terminal state
                 block.addAction(Actions.sequence(
                         Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
                         Actions.run(() -> {
-                            game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                            piece.setPosition(new int[] { toRow, toCol });
-                            recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                            isTerminal = game.isTerminal(); // Check if the game is in a terminal state
                         })));
                 break;
             }
@@ -469,18 +508,18 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                         // Animate the block's movement to the target position
                         float targetX = toCol * cellSize;
                         float targetY = (rows - toRow - piece.height) * cellSize; // Invert y-axis
+                        game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                        piece.setPosition(new int[] { toRow, toCol });
+                        recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                        solutionIndex++;
+                        this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
+                        broadcastGameState();
                         block.addAction(Actions.sequence(
                                 Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
                                 Actions.run(() -> {
                                     // Update game logic after animation
                                     // TODO: find a more robust way, letting applyAction to handle at ease
                                     // Maybe we shall add another variable to show whether we finished the update
-                                    game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                                    piece.setPosition(new int[] { toRow, toCol });
-                                    recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                                    solutionIndex++;
-                                    this.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
-                                    broadcastGameState();
                                 })));
                         break;
                     }
@@ -522,6 +561,11 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         int minutes = (int) (elapsedTime / 60);
         int seconds = (int) (elapsedTime % 60);
         timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+
+        // Magically make the resize work without problems
+        // I dont't know why, but it works
+        // Do not delete this line.
+        System.out.println(game.toString());
     }
 
     @Override

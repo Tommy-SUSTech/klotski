@@ -10,6 +10,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Cursor;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
@@ -55,14 +57,24 @@ public class MainScreen implements Screen {
     private boolean rotateCounterClockwise;
     private float rotationAngle = 0f; // Rotation angle in degrees
     private float rotationSpeed = 10f; // Degrees per second
-    private Color currentColor = new Color(0, 0, 1, 1); // Start with blue
-    private float colorChangeSpeed = 0.01f; // Speed of color change
+    private Color currentColor;
+    private float colorChangeSpeed = 0.001f; // Speed of color change
     public Color[] colorList; // Predefined list of colors
     public Map<String, Color> colorCache; // Cache for storing colors
     public Map<String, Double> zPositionCache;
     public Map<String, Double> zPositionTempCache;
     public Map<String, Double> yRotationCache;
-    private boolean triggerYRotation = false; // Flag to trigger Y rotation
+    public Map<String, Boolean> triggerYRotation; // Flag to trigger Y rotation
+    private boolean triggerYRotationAnimation;
+    private int yRotationAnimationTemp;
+    private int yRotationAnimationStartingRow;
+    private float yRotationAnimationStartingOffsetY;
+    private boolean mutateColorFollowing;
+    private float generateSmoothChangingColorTime = 0.0f;
+    private List<Color> targetColors; // List of target colors
+    private int currentColorIndex = 0; // Index of the current base color
+    private float interpolationFactor = 0f;
+    private float interpolationSpeedMultiplier = 1f; // Speed of color interpolation
 
     public MainScreen(final Klotski klotski) {
         this.klotski = klotski;
@@ -71,7 +83,9 @@ public class MainScreen implements Screen {
         yRotationCache = new HashMap<>();
         zPositionCache = new HashMap<>();
         zPositionTempCache = new HashMap<>();
+        triggerYRotation = new HashMap<>();
 
+        triggerYRotationAnimation = false;
         moveForward = false;
         moveBackward = false;
         moveRight = false;
@@ -79,6 +93,7 @@ public class MainScreen implements Screen {
         moveShifted = false;
         moveUpward = false;
         moveDownward = false;
+        mutateColorFollowing = false;
 
         baseTileSize = 50f;
 
@@ -88,6 +103,7 @@ public class MainScreen implements Screen {
 
         frameCount = 0;
         frameCountOffset = random.nextInt(10000); // Random offset for the frame count
+        yRotationAnimationTemp = 0;
 
         create();
     }
@@ -132,6 +148,9 @@ public class MainScreen implements Screen {
                     case Input.Keys.E:
                         rotateClockwise = true;
                         break;
+                    case Input.Keys.F:
+                        triggerFlip();
+                        break;
                 }
                 return true; // Indicate the event was handled
             }
@@ -173,6 +192,42 @@ public class MainScreen implements Screen {
                         break;
                 }
                 return true;
+            }
+
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                Pixmap clickedPixmap = new Pixmap(Gdx.files.internal("assets/image/clicked.png"));
+
+                Pixmap resizedClickedPixmap = new Pixmap(32, 32, clickedPixmap.getFormat());
+                resizedClickedPixmap.drawPixmap(clickedPixmap,
+                    0, 0, clickedPixmap.getWidth(), clickedPixmap.getHeight(),
+                    0, 0, resizedClickedPixmap.getWidth(), resizedClickedPixmap.getHeight()
+                );
+
+                int xHotspot = 7, yHotspot = 1;
+                Cursor clickedCursor = Gdx.graphics.newCursor(resizedClickedPixmap, xHotspot, yHotspot);
+                resizedClickedPixmap.dispose();
+                clickedPixmap.dispose();
+                Gdx.graphics.setCursor(clickedCursor);
+
+                return true;
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                Pixmap clickedPixmap = new Pixmap(Gdx.files.internal("assets/image/cursor.png"));
+
+                Pixmap resizedClickedPixmap = new Pixmap(32, 32, clickedPixmap.getFormat());
+                resizedClickedPixmap.drawPixmap(clickedPixmap,
+                    0, 0, clickedPixmap.getWidth(), clickedPixmap.getHeight(),
+                    0, 0, resizedClickedPixmap.getWidth(), resizedClickedPixmap.getHeight()
+                );
+
+                int xHotspot = 7, yHotspot = 1;
+                Cursor clickedCursor = Gdx.graphics.newCursor(resizedClickedPixmap, xHotspot, yHotspot);
+                resizedClickedPixmap.dispose();
+                clickedPixmap.dispose();
+                Gdx.graphics.setCursor(clickedCursor);
             }
         });
 
@@ -258,14 +313,6 @@ public class MainScreen implements Screen {
         List<Float> topRectangleYs = new ArrayList<Float>();
         List<Float> topRectangleYRotationAngles = new ArrayList<Float>();
 
-        if (frameCount % (60 * 10) == 0 && !triggerYRotation) {
-            triggerYRotation = true;
-        }
-        if (triggerYRotation) {
-            // No need for empty check, as we are using a HashMap
-            updateYRotationCache();
-        }
-
         // Clear the screen and set the background to light blue
         ScreenUtils.clear(klotski.getBackgroundColor());
 
@@ -307,7 +354,7 @@ public class MainScreen implements Screen {
         float screenWidth = Gdx.graphics.getWidth();
         float screenHeight = Gdx.graphics.getHeight();
 
-        float focalLength = 300.0f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Focal
+        float focalLength = 1500.0f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Focal
                                                                                                                         // length
                                                                                                                         // for
                                                                                                                         // perspective
@@ -322,13 +369,39 @@ public class MainScreen implements Screen {
         float appliedRotationAngle = rotationAngle
                 + 2.0f * ((0.5f - (float) simpleComplexFunction((frameCount + frameCountOffset) / 50f)));
 
-        for (float y = -offsetY - 2f * baseTileSize; y < screenHeight + 15f * baseTileSize; y += baseTileSize) {
+        if (frameCount % (60 * 20) == 0 && !triggerYRotationAnimation) {
+            triggerFlip();
+        }
+        if (triggerYRotationAnimation) {
+            if (frameCount % (10 * 1) == 0) {
+                for (Map.Entry<String, Boolean> entry : triggerYRotation.entrySet()) {
+                    String key = entry.getKey();
+                    String[] parts = key.split(",");
+                    int row = Integer.parseInt(parts[1]);
+                    if (row == yRotationAnimationTemp + yRotationAnimationStartingRow 
+                            || (row == yRotationAnimationTemp - yRotationAnimationStartingRow && false) // I disable this
+                            ) {
+                        entry.setValue(true); // Trigger rotation for all tiles
+                    }
+                }
+                yRotationAnimationTemp ++;
+                if (yRotationAnimationTemp == 200 || yRotationAnimationTemp >= (offsetY + screenHeight + 20f * baseTileSize) / baseTileSize) {
+                    System.out.println("Stop triggering Y rotation, with step: " + yRotationAnimationTemp);
+                    triggerYRotationAnimation = false;
+                    mutateColorFollowing = true;
+                    yRotationAnimationTemp = 0;
+                }
+            }
+        }
+
+        for (float y = -offsetY - 2f * baseTileSize; y < screenHeight + 20f * baseTileSize; y += baseTileSize) {
             for (float x = -offsetX - 100f * baseTileSize; x <= -offsetX + screenWidth
                     + 100f * baseTileSize; x += baseTileSize) {
                 if (x < 0f - 50f * baseTileSize || x > screenWidth + 50f * baseTileSize || y < 0f - 2f * baseTileSize
-                        || y > screenHeight + 15f * baseTileSize) {
+                        || y > screenHeight + 20f * baseTileSize) {
                     continue; // Skip tiles outside the screen
                 }
+                
 
                 // Generate a unique key for the current tile
                 String key = (int) ((int) Math.floor(x / baseTileSize) + (int) Math.floor(offsetX / baseTileSize)) + ","
@@ -339,39 +412,56 @@ public class MainScreen implements Screen {
                 float yRotatedTileSize = baseTileSize;
                 boolean stopTriggering = false;
                 boolean mutateColor = false;
-                double yRotationAngle = 0.0;
+                double yRotationAngle = yRotationCache.computeIfAbsent(key, k -> 0.0);
+                boolean triggerYRotationBool = triggerYRotation.computeIfAbsent(key, k -> false);
                 
                 // Apply Y-rotation if needed
-                if (triggerYRotation) {
+                if (triggerYRotationBool) {
+                    updateYRotationCache(key);
                     String lastKey = (int) ((int) Math.floor(x / baseTileSize)
                             + (int) Math.floor(offsetX / baseTileSize)) + ","
                             + (int) ((int) Math.floor(y / baseTileSize) - 1 + (int) Math.floor(offsetY / baseTileSize));
                     final double lastYRotationCache = yRotationCache.getOrDefault(lastKey, 0.0);
                     yRotationAngle = yRotationCache.computeIfAbsent(key, k -> lastYRotationCache);
-                    if ((yRotationAngle < 0.0 && yRotationAngle > -0.01)
-                            || (yRotationAngle < 2 * Math.PI && yRotationAngle > 2 * Math.PI - 0.01)) {
+                    if ((yRotationAngle < 2 * Math.PI + 0.05 && yRotationAngle > 2 * Math.PI - 0.05)) {
                         yRotationCache.put(key, 0.0);
-                        yRotationAngle = 0.0;
+                        yRotationAngle = 0;
                         stopTriggering = true;
                     }
-                    if (yRotationAngle > 0.5 * Math.PI && yRotationAngle < 1.5 * Math.PI) {
-                        mutateColor = true;
+                    /* 
+                    } else if ((yRotationAngle < 0.0 && yRotationAngle > -0.01)) {
+                        yRotationCache.put(key, 0.0);
+                        yRotationAngle = 0.0;
+                        stopTriggering = true; 
+                    } else if ((yRotationAngle < 2 * Math.PI + 0.01 && yRotationAngle > 2 * Math.PI - 0.01)) {
+                        yRotationCache.put(key, 0.0);
+                        yRotationAngle = 0.0;
+                        stopTriggering = true; 
                     }
-                    float cosYRotationAngle = (float) Math.cos(yRotationAngle);
-                    yRotatedX = (x + 0.5f * baseTileSize) + (x - (x + 0.5f * baseTileSize)) * cosYRotationAngle;
-                    yRotatedTileSize = baseTileSize * cosYRotationAngle;
+                    */
                 }
                 if (stopTriggering) {
-                    triggerYRotation = false;
+                    triggerYRotation.put(key, false);
                 }
+                float cosYRotationAngle = (float) Math.cos(yRotationAngle);
+                yRotatedX = (x + 0.5f * baseTileSize) + (x - (x + 0.5f * baseTileSize)) * cosYRotationAngle;
+                yRotatedTileSize = baseTileSize * cosYRotationAngle;
                 
                 // Get or generate a random color for the tile
-                Color tileColor = colorCache.computeIfAbsent(key, k -> generateSimilarColor(getSmoothChangingColor()));
+                Color tileColorOriginal = colorCache.computeIfAbsent(key, k -> generateSimilarColor(generateSmoothChangingColor(delta), 0.1f, 0.0f, 1.0f));
+                Color tileColor = tileColorOriginal.cpy();
                 if (klotski.klotskiTheme == klotski.klotskiTheme.DARK) {
-                    tileColor = new Color(tileColor.r * 0.65f, tileColor.g * 0.65f, tileColor.b * 0.65f, 1f);
+                    tileColorOriginal = new Color(tileColorOriginal.r * 0.65f, tileColorOriginal.g * 0.65f, tileColorOriginal.b * 0.65f, 1f);
                 }
-                if (mutateColor) {
-                    tileColor = new Color(tileColor.g, tileColor.b, tileColor.r, 1f);
+                if (yRotationAngle > 0.5 * Math.PI && yRotationAngle < 1.5 * Math.PI) {
+                    mutateColor = true;
+                }
+                if (mutateColor 
+                        || (mutateColorFollowing && (int) ((int) Math.floor(y / baseTileSize) + (int) Math.floor(offsetY / baseTileSize)) >= (yRotationAnimationStartingRow + Math.floor((offsetY + screenHeight + 20f * baseTileSize) / baseTileSize)))) {
+                    float[] hsl = rgbToHsl(tileColorOriginal.r, tileColorOriginal.g, tileColorOriginal.b);
+                    hsl[0] = (hsl[0] + 0.5f) % 1.0f; // Rotate hue by 180 degrees
+                    float[] rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+                    tileColor = new Color(rgb[0], rgb[1], rgb[2], 1f);
                 }
 
                 // Apply rotation to the tile positions
@@ -526,59 +616,91 @@ public class MainScreen implements Screen {
         }
     }
 
-    public Color generateSimilarColor(Color baseColor) {
+    public Color generateSimilarColor(Color baseColor, float variability, float offset, float limit) {
         Random random = new Random();
 
-        Color newColor;
-        do {
-            // Generate small random offsets for RGB values
-            float redOffset = (random.nextFloat() - 0.5f) * 0.075f;
-            float greenOffset = (random.nextFloat() - 0.5f) * 0.075f;
-            float blueOffset = (random.nextFloat() - 0.5f) * 0.075f;
+        // Generate small random offsets for RGB values
+        float redOffset = (random.nextFloat() - 0.5f) * variability;
+        float greenOffset = (random.nextFloat() - 0.5f) * variability;
+        float blueOffset = (random.nextFloat() - 0.5f) * variability;
 
-            // Clamp the values to ensure they remain between 0 and 1
-            float newRed = Math.min(Math.max(baseColor.r + redOffset, 0), 1);
-            float newGreen = Math.min(Math.max(baseColor.g + greenOffset, 0), 1);
-            float newBlue = Math.min(Math.max(baseColor.b + blueOffset, 0), 1);
+        // Clamp the values to ensure they remain between 0 and 1
+        float newRed = Math.min(Math.max(baseColor.r + redOffset, 0) + offset, 1);
+        float newGreen = 0.9f * Math.min(Math.max(baseColor.g + greenOffset, 0) + offset, 1); // Eliminate green
+        float newBlue = Math.min(Math.max(baseColor.b + blueOffset, 0) + offset, 1);
 
-            // Create the new color
-            newColor = new Color(newRed, newGreen, newBlue, baseColor.a); // Preserve the alpha value
-        } while (
-        // Ensure the color is not too dark (or light)
-        (klotski.klotskiTheme == klotski.klotskiTheme.LIGHT) ? (calculateLuminance(newColor) < (0.3f))
-                : (calculateLuminance(newColor) > (0.8f)));
+        // Create the new color
+        Color newColor = new Color(newRed, newGreen, newBlue, baseColor.a); // Preserve the alpha value
+
+        // Adjust luminance if necessary
+        float luminance = calculateLuminance(newColor);
+        if (klotski.klotskiTheme == klotski.klotskiTheme.LIGHT && luminance < 0.3f) {
+            if (variability > 0.01f * limit) {
+                return generateSimilarColor(baseColor, 0.5f * variability, 0.2f, 1.0f);
+            } else {
+                return baseColor;
+            }
+        } else if (klotski.klotskiTheme != klotski.klotskiTheme.LIGHT && luminance > 0.8f) {
+            if (variability > 0.01f * limit) {
+                return generateSimilarColor(baseColor, 0.5f * variability, -0.2f, 1.0f);
+            } else {
+                return baseColor;
+            }
+        }
 
         return newColor;
     }
 
-    public Color getSmoothChangingColor() {
-        Random random = new Random();
-
-        Color newColor;
-        do {
-            // Generate small random increments for RGB values
-            float redIncrement = (random.nextFloat() - 0.5f) * colorChangeSpeed; // Offset between -speed and +speed
-            float greenIncrement = (random.nextFloat() - 0.5f) * colorChangeSpeed;
-            float blueIncrement = (random.nextFloat() - 0.5f) * colorChangeSpeed;
-
-            // Update the current color
-            currentColor.r = Math.min(Math.max(currentColor.r + redIncrement, 0), 1);
-            currentColor.g = Math.min(Math.max(currentColor.g + greenIncrement, 0), 1);
-            currentColor.b = Math.min(Math.max(currentColor.b + blueIncrement, 0), 1);
-
-            // Create the new color
-            newColor = new Color(currentColor.r, currentColor.g, currentColor.b, currentColor.a);
-        } while (
-        // Ensure the color is not too dark (or light)
-        (klotski.klotskiTheme == klotski.klotskiTheme.LIGHT) ? (calculateLuminance(newColor) < (0.3f))
-                : (calculateLuminance(newColor) > (0.8f)));
-
-        return newColor;
+    public Color generateSmoothChangingColor(float delta) {
+        if (targetColors == null) {
+            targetColors = new ArrayList<>();
+            targetColors.add(new Color(204 / 255f, 204 / 255f, 255 / 255f, 1)); // rgb(204, 204, 255)
+            targetColors.add(new Color(255 / 255f, 204 / 255f, 153 / 255f, 1)); // rgb(255, 204, 153)
+            targetColors.add(new Color(255 / 255f, 153 / 255f, 255 / 255f, 1)); // rgb(255, 153, 255)
+            targetColors.add(new Color(153 / 255f, 255 / 255f, 204 / 255f, 1)); // rgb(153, 255, 204)
+            targetColors.add(new Color(51 / 255f, 153 / 255f, 255 / 255f, 1)); // rgb(51, 153, 255)
+        }
+        
+        Color currentBaseColor = targetColors.get(currentColorIndex);
+        Color nextBaseColor = targetColors.get((currentColorIndex + 1) % targetColors.size());
+    
+        interpolationFactor += 0.3 * colorChangeSpeed * interpolationSpeedMultiplier;
+        if (interpolationFactor > 1f) {
+            interpolationFactor = 0f;
+            currentColorIndex = (currentColorIndex + 1) % targetColors.size();
+            currentBaseColor = nextBaseColor;
+            nextBaseColor = targetColors.get(random.nextInt(targetColors.size()));
+            if (currentBaseColor == nextBaseColor) {
+                nextBaseColor = targetColors.get((currentColorIndex + 1) % targetColors.size());
+            }
+            // Randomize the interpolation speed
+            interpolationSpeedMultiplier = random.nextFloat() * 0.5f + 0.5f; // Randomize the speed
+            if (interpolationSpeedMultiplier > 1.5f) {
+                interpolationSpeedMultiplier = 1.5f; // Limit the maximum speed
+            }
+            if (interpolationSpeedMultiplier < 0.8f) {
+                interpolationSpeedMultiplier = 0.8f; // Limit the minimum speed
+            }
+        }
+        float t = interpolationFactor;
+        t = t * t * (3 - 2 * t); // smoothstep(t)
+        
+        float red   = currentBaseColor.r + t * (nextBaseColor.r - currentBaseColor.r);
+        float green = currentBaseColor.g + t * (nextBaseColor.g - currentBaseColor.g);
+        float blue  = currentBaseColor.b + t * (nextBaseColor.b - currentBaseColor.b); 
+    
+        currentColor = new Color(red, green, blue, 1.0f);
+        return currentColor;
     }
 
     private float calculateLuminance(Color color) {
         // Use the standard formula for relative luminance
         return 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b;
+    }
+
+    private float calculateLuminance1(Color color) {
+        // Use the standard formula for relative luminance
+        return 0.5f * color.r + 0.5f * color.g + 0.5f * color.b;
     }
 
     private Vector2 applyRotation(float x, float y, float centerX, float centerY, float angle) {
@@ -598,7 +720,7 @@ public class MainScreen implements Screen {
         return new Vector2(rotatedX + centerX, rotatedY + centerY);
     }
 
-    private void updateYRotationCache() {
+    private void updateAllYRotationCache() {
         for (Map.Entry<String, Double> entry : yRotationCache.entrySet()) {
             String key = entry.getKey();
             double yRotation = entry.getValue();
@@ -608,6 +730,15 @@ public class MainScreen implements Screen {
             yRotation += 0.01; // Increment by 0.01 radians
             yRotationCache.put(key, yRotation);
         }
+    }
+
+    private void updateYRotationCache(String key) {
+        double yRotation = yRotationCache.getOrDefault(key, 0.0);
+        if (yRotation > 2 * Math.PI) {
+            yRotation = 0; // Reset if it exceeds 2π
+        }
+        yRotation += 0.05; // Increment by 0.01 radians
+        yRotationCache.put(key, yRotation);
     }
 
     private void updateZPositionCache() {
@@ -680,5 +811,71 @@ public class MainScreen implements Screen {
     
         // Check if all cross products have the same sign
         return (cross1 >= 0 && cross2 >= 0 && cross3 >= 0) || (cross1 <= 0 && cross2 <= 0 && cross3 <= 0);
+    }
+
+    public void triggerFlip() {
+        if (!triggerYRotationAnimation || true) {
+            yRotationAnimationStartingOffsetY = offsetY;
+            yRotationAnimationStartingRow = (int) Math.floor(yRotationAnimationStartingOffsetY / baseTileSize);
+            yRotationAnimationTemp = 0; 
+            triggerYRotationAnimation = true;
+            System.out.println("Triggering flip animation, with starting row: " + yRotationAnimationStartingRow);
+        }
+    }
+    
+    private float[] rgbToHsl(float r, float g, float b) {
+        // Normalize RGB values to [0, 1]
+        r = Math.min(Math.max(r, 0), 1);
+        g = Math.min(Math.max(g, 0), 1);
+        b = Math.min(Math.max(b, 0), 1);
+    
+        float max = Math.max(r, Math.max(g, b));
+        float min = Math.min(r, Math.min(g, b));
+        float delta = max - min;
+    
+        float h = 0, s = 0, l = (max + min) / 2;
+    
+        if (delta != 0) {
+            // Calculate saturation
+            s = l < 0.5f ? delta / (max + min) : delta / (2 - max - min);
+    
+            // Calculate hue
+            if (max == r) {
+                h = (g - b) / delta + (g < b ? 6 : 0);
+            } else if (max == g) {
+                h = (b - r) / delta + 2;
+            } else if (max == b) {
+                h = (r - g) / delta + 4;
+            }
+            h /= 6;
+        }
+    
+        return new float[]{h, s, l};
+    }
+
+    private float[] hslToRgb(float h, float s, float l) {
+        float r, g, b;
+    
+        if (s == 0) {
+            // Achromatic (gray)
+            r = g = b = l;
+        } else {
+            float q = l < 0.5f ? l * (1 + s) : l + s - l * s;
+            float p = 2 * l - q;
+            r = hueToRgb(p, q, h + 1f / 3f);
+            g = hueToRgb(p, q, h);
+            b = hueToRgb(p, q, h - 1f / 3f);
+        }
+    
+        return new float[]{r, g, b};
+    }
+    
+    private float hueToRgb(float p, float q, float t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1f / 6f) return p + (q - p) * 6 * t;
+        if (t < 1f / 2f) return q;
+        if (t < 2f / 3f) return p + (q - p) * (2f / 3f - t) * 6;
+        return p;
     }
 }

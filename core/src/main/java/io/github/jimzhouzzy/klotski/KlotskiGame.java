@@ -169,7 +169,7 @@ public class KlotskiGame {
     }
 
     public boolean isTerminal() {
-        KlotskiPiece piece = getPieceAt(new int[] {4, 1});
+        KlotskiPiece piece = getPieceAtPrecise(new int[] {3, 1});
         if (piece != null && (piece.id == 0 || "Cao Cao".equals(piece.name))) {
             return true;
         }
@@ -189,6 +189,16 @@ public class KlotskiGame {
                 position[0] < piece.position[0] + piece.height &&
                 position[1] >= piece.position[1] &&
                 position[1] < piece.position[1] + piece.width) {
+                return piece;
+            }
+        }
+        return null;
+    }
+
+    private KlotskiPiece getPieceAtPrecise(int[] position) {
+        for (KlotskiPiece piece : pieces) {
+            if (position[0] == piece.position[0] &&
+                position[1] == piece.position[1]) {
                 return piece;
             }
         }

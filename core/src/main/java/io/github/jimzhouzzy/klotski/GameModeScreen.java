@@ -3,12 +3,15 @@ package io.github.jimzhouzzy.klotski;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Cursor;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 
 public class GameModeScreen implements Screen {
 
@@ -20,6 +23,42 @@ public class GameModeScreen implements Screen {
         this.klotski = klotski;
         this.stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+
+        stage.addListener(new InputListener() {
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                Pixmap clickedPixmap = new Pixmap(Gdx.files.internal("assets/image/clicked.png"));
+
+                Pixmap resizedClickedPixmap = new Pixmap(32, 32, clickedPixmap.getFormat());
+                resizedClickedPixmap.drawPixmap(clickedPixmap,
+                        0, 0, clickedPixmap.getWidth(), clickedPixmap.getHeight(),
+                        0, 0, resizedClickedPixmap.getWidth(), resizedClickedPixmap.getHeight());
+
+                int xHotspot = 7, yHotspot = 1;
+                Cursor clickedCursor = Gdx.graphics.newCursor(resizedClickedPixmap, xHotspot, yHotspot);
+                resizedClickedPixmap.dispose();
+                clickedPixmap.dispose();
+                Gdx.graphics.setCursor(clickedCursor);
+
+                return true;
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                Pixmap clickedPixmap = new Pixmap(Gdx.files.internal("assets/image/cursor.png"));
+
+                Pixmap resizedClickedPixmap = new Pixmap(32, 32, clickedPixmap.getFormat());
+                resizedClickedPixmap.drawPixmap(clickedPixmap,
+                        0, 0, clickedPixmap.getWidth(), clickedPixmap.getHeight(),
+                        0, 0, resizedClickedPixmap.getWidth(), resizedClickedPixmap.getHeight());
+
+                int xHotspot = 7, yHotspot = 1;
+                Cursor clickedCursor = Gdx.graphics.newCursor(resizedClickedPixmap, xHotspot, yHotspot);
+                resizedClickedPixmap.dispose();
+                clickedPixmap.dispose();
+                Gdx.graphics.setCursor(clickedCursor);
+            }
+        });
 
         // Load the skin for UI components
         skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
