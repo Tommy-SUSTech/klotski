@@ -75,6 +75,8 @@ public class MainScreen implements Screen {
     private int currentColorIndex = 0; // Index of the current base color
     private float interpolationFactor = 0f;
     private float interpolationSpeedMultiplier = 1f; // Speed of color interpolation
+    private List<Vector2[]> topRectangleVectors;
+    private List<Float> topRectangleYs; 
 
     public MainScreen(final Klotski klotski) {
         this.klotski = klotski;
@@ -196,6 +198,7 @@ public class MainScreen implements Screen {
 
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                // Update cursor
                 Pixmap clickedPixmap = new Pixmap(Gdx.files.internal("assets/image/clicked.png"));
 
                 Pixmap resizedClickedPixmap = new Pixmap(32, 32, clickedPixmap.getFormat());
@@ -209,6 +212,19 @@ public class MainScreen implements Screen {
                 resizedClickedPixmap.dispose();
                 clickedPixmap.dispose();
                 Gdx.graphics.setCursor(clickedCursor);
+
+                // If the cursor is clicked inside a quadrant, trigger the flip
+                for (int i = 0; i < topRectangleVectors.size(); i++) {
+                    Vector2[] vector  = topRectangleVectors.get(i);
+                    float rectY = topRectangleYs.get(i);
+                    float screenHeight = Gdx.graphics.getHeight();
+                    float cursorX = Gdx.input.getX();
+                    float cursorY = screenHeight - Gdx.input.getY();
+                    if (isPointInQuadrilateral(new Vector2(cursorX, cursorY), vector[0], vector[1], vector[2], vector[3])) {
+                        triggerFlip((int) ((rectY + offsetY) / baseTileSize));
+                        break;
+                    }
+                }
 
                 return true;
             }
@@ -308,9 +324,9 @@ public class MainScreen implements Screen {
         frameCount %= Integer.MAX_VALUE; // Avoid overflow
 
         // The rectangle points for the top layer
-        List<Vector2[]> topRectangleVectors = new ArrayList<Vector2[]>();
+        topRectangleVectors = new ArrayList<Vector2[]>();
         List<Color> topRectangleColors = new ArrayList<Color>();
-        List<Float> topRectangleYs = new ArrayList<Float>();
+        topRectangleYs = new ArrayList<Float>();
         List<Float> topRectangleYRotationAngles = new ArrayList<Float>();
 
         // Clear the screen and set the background to light blue
@@ -379,7 +395,7 @@ public class MainScreen implements Screen {
                     String[] parts = key.split(",");
                     int row = Integer.parseInt(parts[1]);
                     if (row == yRotationAnimationTemp + yRotationAnimationStartingRow 
-                            || (row == yRotationAnimationTemp - yRotationAnimationStartingRow && false) // I disable this
+                            || (row ==  - yRotationAnimationTemp + yRotationAnimationStartingRow)
                             ) {
                         entry.setValue(true); // Trigger rotation for all tiles
                     }
@@ -449,19 +465,22 @@ public class MainScreen implements Screen {
                 
                 // Get or generate a random color for the tile
                 Color tileColorOriginal = colorCache.computeIfAbsent(key, k -> generateSimilarColor(generateSmoothChangingColor(delta), 0.1f, 0.0f, 1.0f));
-                Color tileColor = tileColorOriginal.cpy();
                 if (klotski.klotskiTheme == klotski.klotskiTheme.DARK) {
-                    tileColorOriginal = new Color(tileColorOriginal.r * 0.65f, tileColorOriginal.g * 0.65f, tileColorOriginal.b * 0.65f, 1f);
+                    tileColorOriginal = new Color(tileColorOriginal.r * 0.65f, tileColorOriginal.g * 0.65f, tileColorOriginal.b * 0.65f, tileColorOriginal.a);
                 }
+                Color tileColor = tileColorOriginal.cpy();
+                float luminanceAdjustment = Math.min(1.0f, Math.max(-1.0f, (y - 8 * baseTileSize) / (2.5f * screenHeight)));
+                tileColor.lerp(Color.WHITE, luminanceAdjustment);
                 if (yRotationAngle > 0.5 * Math.PI && yRotationAngle < 1.5 * Math.PI) {
                     mutateColor = true;
                 }
                 if (mutateColor 
                         || (mutateColorFollowing && (int) ((int) Math.floor(y / baseTileSize) + (int) Math.floor(offsetY / baseTileSize)) >= (yRotationAnimationStartingRow + Math.floor((offsetY + screenHeight + 20f * baseTileSize) / baseTileSize)))) {
-                    float[] hsl = rgbToHsl(tileColorOriginal.r, tileColorOriginal.g, tileColorOriginal.b);
+                    float[] hsl = rgbToHsl(tileColor.r, tileColor.g, tileColor.b);
+                    float alpha = tileColor.a;
                     hsl[0] = (hsl[0] + 0.5f) % 1.0f; // Rotate hue by 180 degrees
                     float[] rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
-                    tileColor = new Color(rgb[0], rgb[1], rgb[2], 1f);
+                    tileColor = new Color(rgb[0], rgb[1], rgb[2], alpha);
                 }
 
                 // Apply rotation to the tile positions
@@ -817,6 +836,16 @@ public class MainScreen implements Screen {
         if (!triggerYRotationAnimation || true) {
             yRotationAnimationStartingOffsetY = offsetY;
             yRotationAnimationStartingRow = (int) Math.floor(yRotationAnimationStartingOffsetY / baseTileSize);
+            yRotationAnimationTemp = 0; 
+            triggerYRotationAnimation = true;
+            System.out.println("Triggering flip animation, with starting row: " + yRotationAnimationStartingRow);
+        }
+    }
+
+    public void triggerFlip(int row) {
+        if (!triggerYRotationAnimation || true) {
+            yRotationAnimationStartingOffsetY = row * baseTileSize;
+            yRotationAnimationStartingRow = row;
             yRotationAnimationTemp = 0; 
             triggerYRotationAnimation = true;
             System.out.println("Triggering flip animation, with starting row: " + yRotationAnimationStartingRow);
