@@ -59,7 +59,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
     private int[][] autoMoves;
     private int autoStep;
     public boolean isAutoSolving;
-    private boolean isTerminal = false;
+    public boolean isTerminal = false;
 
     private List<int[][]> moveHistory; // Stores the history of moves
     private int currentMoveIndex; // Tracks the current move in the history
@@ -122,7 +122,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         // Add buttons with listeners
         for (String name : buttonNames) {
             TextButton button = new TextButton(name, skin);
-            button.getLabel().setFontScale(0.5f); 
+            button.getLabel().setFontScale(0.5f);
             buttonTable.add(button).height(30).width(100).pad(10);
             buttonTable.row();
 
@@ -253,22 +253,22 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                     case Input.Keys.L:
                     case Input.Keys.LEFT:
                         // Handle left arrow key for moving blocks
-                        handleArrowKeys(new int[] {0, -1});
+                        handleArrowKeys(new int[] { 0, -1 });
                         return true;
                     case Input.Keys.K:
                     case Input.Keys.UP:
                         // Handle left arrow key for moving blocks
-                        handleArrowKeys(new int[] {-1, 0});
+                        handleArrowKeys(new int[] { -1, 0 });
                         return true;
                     case Input.Keys.H:
                     case Input.Keys.RIGHT:
                         // Handle left arrow key for moving blocks
-                        handleArrowKeys(new int[] {0, 1});
+                        handleArrowKeys(new int[] { 0, 1 });
                         return true;
                     case Input.Keys.J:
                     case Input.Keys.DOWN:
                         // Handle left arrow key for moving blocks
-                        handleArrowKeys(new int[] {1, 0});
+                        handleArrowKeys(new int[] { 1, 0 });
                         return true;
                 }
                 return false;
@@ -294,13 +294,13 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 float targetX = toCol * cellSize;
                 float targetY = (rows - toRow - piece.height) * cellSize; // Invert y-axis
                 block.addAction(Actions.sequence(
-                    Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
-                    Actions.run(() -> {
-                        game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                        piece.setPosition(new int[] { toRow, toCol });
-                        recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                        isTerminal = game.isTerminal(); // Check if the game is in a terminal state
-                    })));
+                        Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
+                        Actions.run(() -> {
+                            game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                            piece.setPosition(new int[] { toRow, toCol });
+                            recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+                            isTerminal = game.isTerminal(); // Check if the game is in a terminal state
+                        })));
                 break;
             }
         }
@@ -317,7 +317,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             case 3:
             case 4:
             case 5:
-                return new Color(204f/255f, 51f/255f, 255f/255f, 1); // Soft purple for Generals
+                return new Color(204f / 255f, 51f / 255f, 255f / 255f, 1); // Soft purple for Generals
             case 6:
             case 7:
             case 8:
@@ -659,7 +659,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
 
         // Ensure the group is drawn on top
         congratulationsGroup.setZIndex(Integer.MAX_VALUE);
-    
+
         // Add a semi-transparent gray background
         Image background = new Image(skin.newDrawable("white", new Color(0, 0, 0, 0.5f))); // Semi-transparent gray
         background.setSize(stageWidth / 1.7f, stageHeight / 2f); // Half the size of the stage
@@ -685,6 +685,9 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         // Store the timeLabel for later updates
         this.timerLabelCongrats = timerLabelCongrats;
 
+        // Create a horizontal table for the buttons
+        Table buttonRow = new Table();
+
         // Add restart button
         TextButton restartButton = new TextButton("Restart", skin);
         restartButton.addListener(new ClickListener() {
@@ -694,18 +697,21 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 congratulationsGroup.setVisible(false); // Hide the congratulations screen
             }
         });
-        congratsTable.add(restartButton).width(200).height(50);
+        buttonRow.add(restartButton).width(200).height(50).padRight(10); // Add padding between buttons
 
         // Add exit button
-        TextButton exitButton = new TextButton("exit", skin);
+        TextButton exitButton = new TextButton("Exit", skin);
         exitButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                handleExit();
+                handleExit(); // Exit the game
             }
         });
-        congratsTable.add(restartButton).width(200).height(50);
-        
+        buttonRow.add(exitButton).width(200).height(50); // Add exit button to the same row
+
+        // Add the button row to the main table
+        congratsTable.add(buttonRow).padTop(20).row();
+
         // Add the table to the group
         congratulationsGroup.addActor(congratsTable);
 
@@ -808,7 +814,8 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         String saveFileName = getSaveFileName();
         File file = new File(Gdx.files.getLocalStoragePath(), saveFileName);
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-            // Save the positions of all pieces, move history, current move index, and elapsed time
+            // Save the positions of all pieces, move history, current move index, and
+            // elapsed time
             oos.writeObject(new ArrayList<>(List.of(game.getPieces())));
             oos.writeObject(moveHistory);
             oos.writeInt(currentMoveIndex);

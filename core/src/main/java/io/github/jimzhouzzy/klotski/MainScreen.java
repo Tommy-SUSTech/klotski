@@ -1,6 +1,8 @@
 package io.github.jimzhouzzy.klotski;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -42,7 +44,6 @@ public class MainScreen implements Screen {
     private float offsetY;
     private float offsetZ;
     private Random random;
-    public Map<String, Color> colorCache; // Cache for storing colors
     private boolean moveForward;
     private boolean moveBackward;
     private boolean moveLeft;
@@ -57,10 +58,19 @@ public class MainScreen implements Screen {
     private Color currentColor = new Color(0, 0, 1, 1); // Start with blue
     private float colorChangeSpeed = 0.01f; // Speed of color change
     public Color[] colorList; // Predefined list of colors
+    public Map<String, Color> colorCache; // Cache for storing colors
+    public Map<String, Double> zPositionCache;
+    public Map<String, Double> zPositionTempCache;
+    public Map<String, Double> yRotationCache;
+    private boolean triggerYRotation = false; // Flag to trigger Y rotation
 
     public MainScreen(final Klotski klotski) {
         this.klotski = klotski;
         random = new Random();
+        colorCache = new HashMap<>();
+        yRotationCache = new HashMap<>();
+        zPositionCache = new HashMap<>();
+        zPositionTempCache = new HashMap<>();
 
         moveForward = false;
         moveBackward = false;
@@ -168,7 +178,6 @@ public class MainScreen implements Screen {
 
         // Initialize ShapeRenderer
         shapeRenderer = new ShapeRenderer();
-        colorCache = new HashMap<>();
 
         // Load colors
         loadColors();
@@ -243,6 +252,20 @@ public class MainScreen implements Screen {
         frameCount++;
         frameCount %= Integer.MAX_VALUE; // Avoid overflow
 
+        // The rectangle points for the top layer
+        List<Vector2[]> topRectangleVectors = new ArrayList<Vector2[]>();
+        List<Color> topRectangleColors = new ArrayList<Color>();
+        List<Float> topRectangleYs = new ArrayList<Float>();
+        List<Float> topRectangleYRotationAngles = new ArrayList<Float>();
+
+        if (frameCount % (60 * 10) == 0 && !triggerYRotation) {
+            triggerYRotation = true;
+        }
+        if (triggerYRotation) {
+            // No need for empty check, as we are using a HashMap
+            updateYRotationCache();
+        }
+
         // Clear the screen and set the background to light blue
         ScreenUtils.clear(klotski.getBackgroundColor());
 
@@ -307,53 +330,110 @@ public class MainScreen implements Screen {
                     continue; // Skip tiles outside the screen
                 }
 
-                // Apply rotation to the tile positions
-                // Note that this rotation is not the real rotation
-                Vector2 rotatedPosition = applyRotation(x, y, centerX, centerZ, appliedRotationAngle);
-                Vector2 rotatedPositionBR = applyRotation(x + baseTileSize, y + baseTileSize, centerX, centerZ,
-                        appliedRotationAngle);
-
-                // Calculate the projected positions for the four corners of the tile
-                Vector2 tl = projectPerspective(rotatedPosition.x, rotatedPosition.y, focalLength, centerX, centerZ);
-                Vector2 tr = projectPerspective(rotatedPositionBR.x, rotatedPosition.y, focalLength, centerX, centerZ);
-                Vector2 bl = projectPerspective(rotatedPosition.x, rotatedPositionBR.y, focalLength, centerX, centerZ);
-                Vector2 br = projectPerspective(rotatedPositionBR.x, rotatedPositionBR.y, focalLength, centerX,
-                        centerZ);
-
                 // Generate a unique key for the current tile
                 String key = (int) ((int) Math.floor(x / baseTileSize) + (int) Math.floor(offsetX / baseTileSize)) + ","
                         + (int) ((int) Math.floor(y / baseTileSize) + (int) Math.floor(offsetY / baseTileSize));
-
+                double zPositionChange = 0.0;
+                float zPositionChangedY = (float) (y);
+                float yRotatedX = x;
+                float yRotatedTileSize = baseTileSize;
+                boolean stopTriggering = false;
+                boolean mutateColor = false;
+                double yRotationAngle = 0.0;
+                
+                // Apply Y-rotation if needed
+                if (triggerYRotation) {
+                    String lastKey = (int) ((int) Math.floor(x / baseTileSize)
+                            + (int) Math.floor(offsetX / baseTileSize)) + ","
+                            + (int) ((int) Math.floor(y / baseTileSize) - 1 + (int) Math.floor(offsetY / baseTileSize));
+                    final double lastYRotationCache = yRotationCache.getOrDefault(lastKey, 0.0);
+                    yRotationAngle = yRotationCache.computeIfAbsent(key, k -> lastYRotationCache);
+                    if ((yRotationAngle < 0.0 && yRotationAngle > -0.01)
+                            || (yRotationAngle < 2 * Math.PI && yRotationAngle > 2 * Math.PI - 0.01)) {
+                        yRotationCache.put(key, 0.0);
+                        yRotationAngle = 0.0;
+                        stopTriggering = true;
+                    }
+                    if (yRotationAngle > 0.5 * Math.PI && yRotationAngle < 1.5 * Math.PI) {
+                        mutateColor = true;
+                    }
+                    float cosYRotationAngle = (float) Math.cos(yRotationAngle);
+                    yRotatedX = (x + 0.5f * baseTileSize) + (x - (x + 0.5f * baseTileSize)) * cosYRotationAngle;
+                    yRotatedTileSize = baseTileSize * cosYRotationAngle;
+                }
+                if (stopTriggering) {
+                    triggerYRotation = false;
+                }
+                
                 // Get or generate a random color for the tile
                 Color tileColor = colorCache.computeIfAbsent(key, k -> generateSimilarColor(getSmoothChangingColor()));
                 if (klotski.klotskiTheme == klotski.klotskiTheme.DARK) {
                     tileColor = new Color(tileColor.r * 0.65f, tileColor.g * 0.65f, tileColor.b * 0.65f, 1f);
                 }
-                shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-                shapeRenderer.setColor(tileColor);
-                shapeRenderer.triangle(tl.x, tl.y, tr.x, tr.y, br.x, br.y);
-                shapeRenderer.triangle(br.x, br.y, bl.x, bl.y, tl.x, tl.y);
-                shapeRenderer.end();
+                if (mutateColor) {
+                    tileColor = new Color(tileColor.g, tileColor.b, tileColor.r, 1f);
+                }
 
-                // Draw the top-left highlight border
+                // Apply rotation to the tile positions
+                // Note that this rotation is not the real rotation
+                Vector2 rotatedPosition = applyRotation(yRotatedX, zPositionChangedY, centerX, centerZ,
+                        appliedRotationAngle);
+                Vector2 rotatedPositionBR = applyRotation(yRotatedX + yRotatedTileSize,
+                        zPositionChangedY + baseTileSize, centerX,
+                        centerZ,
+                        appliedRotationAngle);
 
-                Gdx.gl.glLineWidth(6f * (1 - y / screenHeight)); // Set line width
-                shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-                shapeRenderer.setColor(tileColor.cpy().mul(1.2f)); // Lighter color for highlight
-                shapeRenderer.line(tl.x, tl.y, tr.x, tr.y); // Top edge
-                shapeRenderer.line(tl.x, tl.y, bl.x, bl.y); // Left edge
-                shapeRenderer.end();
+                // Calculate the projected positions for the four corners of the tile
+                Vector2 tl = projectPerspective(rotatedPosition.x, rotatedPosition.y + (float) zPositionChange,
+                        focalLength, centerX, centerZ);
+                Vector2 tr = projectPerspective(rotatedPositionBR.x, rotatedPosition.y + (float) zPositionChange,
+                        focalLength, centerX, centerZ);
+                Vector2 bl = projectPerspective(rotatedPosition.x, rotatedPositionBR.y + (float) zPositionChange,
+                        focalLength, centerX, centerZ);
+                Vector2 br = projectPerspective(rotatedPositionBR.x, rotatedPositionBR.y + (float) zPositionChange,
+                        focalLength, centerX,
+                        centerZ);
 
-                // Draw the bottom-right shadow border
-                Gdx.gl.glLineWidth(12f * (1 - y / screenHeight)); // Set line width
-                shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-                shapeRenderer.setColor(tileColor.cpy().mul(0.6f)); // Darker color for shadow
-                shapeRenderer.line(bl.x, bl.y, br.x, br.y); // Bottom edge
-                shapeRenderer.line(tr.x, tr.y, br.x, br.y); // Right edge
-                shapeRenderer.end();
+                // If cursor is inside the rectangle, change zPositionChange to 100
+                float cursorX = Gdx.input.getX();
+                float cursorY = screenHeight - Gdx.input.getY();
+                Vector2 cursor = new Vector2(cursorX, cursorY);
+
+                if (isPointInQuadrilateral(cursor, tl, tr, bl, br)) {
+                    zPositionChange = 10.0;
+
+                    // Add zPositionChange
+                    tl = projectPerspective(rotatedPosition.x, rotatedPosition.y + (float) zPositionChange, focalLength,
+                            centerX, centerZ);
+                    tr = projectPerspective(rotatedPositionBR.x, rotatedPosition.y + (float) zPositionChange,
+                            focalLength, centerX, centerZ);
+                    bl = projectPerspective(rotatedPosition.x, rotatedPositionBR.y + (float) zPositionChange,
+                            focalLength, centerX, centerZ);
+                    br = projectPerspective(rotatedPositionBR.x, rotatedPositionBR.y + (float) zPositionChange,
+                            focalLength, centerX,
+                            centerZ);
+
+                    topRectangleVectors.add(new Vector2[] { tl, tr, bl, br});
+                    topRectangleColors.add(tileColor);
+                    topRectangleYs.add(y); // original y position
+                    topRectangleYRotationAngles.add((float) yRotationAngle);
+                }
+                
+                drawTopRectangle(tl, tr, bl, br, y, tileColor, (float) yRotationAngle);
             }
-            Gdx.gl.glLineWidth(1f); // Set back line width
+        }
 
+        // Draw top layer
+        for (int i = 0; i < topRectangleVectors.size(); i ++) {
+            drawTopRectangle(
+                topRectangleVectors.get(i)[0],
+                topRectangleVectors.get(i)[1],
+                topRectangleVectors.get(i)[2],
+                topRectangleVectors.get(i)[3],
+                topRectangleYs.get(i),
+                topRectangleColors.get(i),
+                topRectangleYRotationAngles.get(i)
+            );
         }
 
         // Update the greeting label with the logged-in user's name
@@ -516,5 +596,89 @@ public class MainScreen implements Screen {
 
         // Translate point back
         return new Vector2(rotatedX + centerX, rotatedY + centerY);
+    }
+
+    private void updateYRotationCache() {
+        for (Map.Entry<String, Double> entry : yRotationCache.entrySet()) {
+            String key = entry.getKey();
+            double yRotation = entry.getValue();
+            if (yRotation > 2 * Math.PI) {
+                yRotation = 0; // Reset if it exceeds 2π
+            }
+            yRotation += 0.01; // Increment by 0.01 radians
+            yRotationCache.put(key, yRotation);
+        }
+    }
+
+    private void updateZPositionCache() {
+        for (Map.Entry<String, Double> entry : zPositionCache.entrySet()) {
+            String key = entry.getKey();
+            // Although I added default value, it is a MUST NEED to ENSURE every position
+            // has a temp
+            double zPositionTemp = zPositionTempCache.getOrDefault(key, 0.0);
+            double zPosition = entry.getValue();
+            if (zPositionTemp > 2 * Math.PI) {
+                zPositionTemp = 0; // Reset if it exceeds 2π
+            }
+            zPositionTemp += 0.1; // Increment by 0.01 radians
+            zPosition = 100 * Math.sin(zPositionTemp);
+            zPositionCache.put(key, zPosition);
+        }
+    }
+
+    public void drawTopRectangle(Vector2 tl, Vector2 tr, Vector2 bl, Vector2 br, float y, Color tileColor, float yRotateAngle) {
+        float screenHeight = Gdx.graphics.getHeight();
+
+        // Draw the tile
+        Gdx.gl.glLineWidth(1f); // Set line width
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(tileColor);
+        shapeRenderer.triangle(tl.x, tl.y, tr.x, tr.y, br.x, br.y);
+        shapeRenderer.triangle(br.x, br.y, bl.x, bl.y, tl.x, tl.y);
+        shapeRenderer.end();
+
+        // Draw the top-left highlight border
+
+        Gdx.gl.glLineWidth(Math.max(1f, 6f * (float) Math.abs(Math.cos(yRotateAngle) * (1 - y / screenHeight)))); // Set line width
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(tileColor.cpy().mul(1.2f)); // Lighter color for highlight
+        shapeRenderer.line(tl.x, tl.y, tr.x, tr.y); // Top edge
+        shapeRenderer.line(tl.x, tl.y, bl.x, bl.y); // Left edge
+        shapeRenderer.end();
+
+        // Draw the bottom-right shadow border
+        Gdx.gl.glLineWidth(Math.max(1f, 12f * (float) Math.abs(Math.cos(yRotateAngle) * (1 - y / screenHeight)))); // Set line width
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(tileColor.cpy().mul(0.6f)); // Darker color for shadow
+        shapeRenderer.line(bl.x, bl.y, br.x, br.y); // Bottom edge
+        shapeRenderer.line(tr.x, tr.y, br.x, br.y); // Right edge
+        shapeRenderer.end();
+
+        Gdx.gl.glLineWidth(1f); // Set back line width
+    }
+
+    private boolean isPointInQuadrilateral(Vector2 point, Vector2 tl, Vector2 tr, Vector2 bl, Vector2 br) {
+        // Check if the point is in either of the two triangles
+        return isPointInTriangle(point, tl, tr, br) || isPointInTriangle(point, tl, br, bl);
+    }
+    
+    private boolean isPointInTriangle(Vector2 point, Vector2 v1, Vector2 v2, Vector2 v3) {
+        // Calculate vectors
+        Vector2 v1v2 = v2.cpy().sub(v1);
+        Vector2 v2v3 = v3.cpy().sub(v2);
+        Vector2 v3v1 = v1.cpy().sub(v3);
+    
+        // Calculate vectors from the point to the vertices
+        Vector2 v1p = point.cpy().sub(v1);
+        Vector2 v2p = point.cpy().sub(v2);
+        Vector2 v3p = point.cpy().sub(v3);
+    
+        // Calculate cross products
+        float cross1 = v1v2.crs(v1p);
+        float cross2 = v2v3.crs(v2p);
+        float cross3 = v3v1.crs(v3p);
+    
+        // Check if all cross products have the same sign
+        return (cross1 >= 0 && cross2 >= 0 && cross3 >= 0) || (cross1 <= 0 && cross2 <= 0 && cross3 <= 0);
     }
 }

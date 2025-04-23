@@ -126,6 +126,7 @@ public class RectangleBlockActor extends Actor {
                         gameScreen.getGame().applyAction(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
                         gameScreen.recordMove(new int[]{oldRow, oldCol}, new int[]{newRow, newCol});
 
+                        gameScreen.isTerminal = game.isTerminal(); // Check if the game is in a terminal state
                         gameScreen.broadcastGameState();
                     })
                 ));
