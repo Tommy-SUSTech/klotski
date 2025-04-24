@@ -220,7 +220,7 @@ public class MainScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
-        klotski.dynamicBoard = new DynamicBoard(klotski, stage);
+        // klotski.dynamicBoard = new DynamicBoard(klotski, stage);
         dispose();
         create();
     }

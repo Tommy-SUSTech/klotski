@@ -552,7 +552,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         stage.clear();
         stage.getViewport().update(width, height, true);
         create();
-        klotski.dynamicBoard = new DynamicBoard(klotski, stage);
+        // klotski.dynamicBoard = new DynamicBoard(klotski, stage);
 
         // Restore the saved state
         game.setPieces(savedPieces);
