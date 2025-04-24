@@ -14,8 +14,12 @@ import io.github.jimzhouzzy.klotski.Klotski;
 import io.github.jimzhouzzy.klotski.MainScreen;
 
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 
 import java.io.*;
 import java.util.HashMap;
@@ -33,6 +37,7 @@ public class LoginScreen implements Screen {
         this.klotski = klotski;
         this.stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+        klotski.dynamicBoard.setStage(stage);
 
         stage.addListener(new InputListener() {
             @Override
@@ -142,6 +147,11 @@ public class LoginScreen implements Screen {
     }
 
     private boolean authenticate(String username, String password) {
+        // Do basic validation
+        if (!basicValication(username, password)) {
+            return false;
+        }
+
         // Check if the username exists and the password matches
         return userDatabase.containsKey(username) && userDatabase.get(username).equals(password);
     }
@@ -152,11 +162,41 @@ public class LoginScreen implements Screen {
             return false;
         }
 
+        // Do basic validation
+        if (!basicValication(username, password)) {
+            return false;
+        }
+
         // Add the new user to the database
         userDatabase.put(username, password);
 
         // Save the updated user data to the file
         saveUserData();
+
+        return true;
+    }
+
+    private boolean basicValication(String username, String password) {
+        // Check if the username is valid (not empty)
+        if (username == null || username.isEmpty()) {
+            return false;
+        }
+        // Check if the password is valid (not empty)
+        if (password == null || password.isEmpty()) {
+            return false;
+        }
+        // Check if the username is too long
+        if (username.length() > 20) {
+            return false;
+        }
+        // Check if the password is too long
+        if (password.length() > 20) {
+            return false;
+        }
+        // Check if the username contains invalid characters
+        if (!username.matches("[a-zA-Z0-9_]+")) {
+            return false;
+        }
 
         return true;
     }
@@ -194,15 +234,51 @@ public class LoginScreen implements Screen {
     }
 
     private void showErrorDialog(String message) {
-        Dialog dialog = new Dialog("Error", skin);
-        dialog.text(message);
-        dialog.button("OK");
-        dialog.show(stage);
+        // Create a group to act as the dialog container
+        Group dialogGroup = new Group();
+
+        // Create a background for the dialog
+        Image background = new Image(skin.newDrawable("white", new Color(1.0f, 1.0f, 1.0f, 0.7f)));
+        background.setSize(400, 250);
+        background.setPosition((stage.getWidth() - background.getWidth()) / 2, (stage.getHeight() - background.getHeight()) / 2);
+        dialogGroup.addActor(background);
+
+        // Create a title label for the dialog
+        Label titleLabel = new Label("Error", skin);
+        titleLabel.setColor(Color.RED);
+        titleLabel.setFontScale(2.0f);
+        titleLabel.setPosition(background.getX() + (background.getWidth() - titleLabel.getWidth()) / 2, background.getY() + 180);
+        dialogGroup.addActor(titleLabel);
+
+        // Create a label for the error message
+        Label messageLabel = new Label(message, skin);
+        messageLabel.setColor(Color.BLACK);
+        messageLabel.setFontScale(1.5f);
+        messageLabel.setWrap(true);
+        messageLabel.setWidth(360);
+        messageLabel.setPosition(background.getX() + 20, background.getY() + 100);
+        dialogGroup.addActor(messageLabel);
+
+        // Create an OK button
+        TextButton okButton = new TextButton("OK", skin);
+        okButton.setSize(100, 40);
+        okButton.setPosition(background.getX() + (background.getWidth() - okButton.getWidth()) / 2, background.getY() + 20);
+        okButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                dialogGroup.remove(); // Remove the dialog when OK is clicked
+            }
+        });
+        dialogGroup.addActor(okButton);
+
+        // Add the dialog group to the stage
+        stage.addActor(dialogGroup);
     }
 
     @Override
     public void render(float delta) {
         ScreenUtils.clear(klotski.getBackgroundColor());
+        klotski.dynamicBoard.render(delta);
         stage.act(delta);
         stage.draw();
     }

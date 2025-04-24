@@ -6,6 +6,9 @@
 
 package io.github.jimzhouzzy.klotski;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
@@ -96,6 +99,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
     public void create() {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+        klotski.dynamicBoard.setStage(stage);
 
         skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
         shapeRenderer = new ShapeRenderer();
@@ -433,6 +437,9 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         // Clear the screen
         klotski.setGlClearColor();
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        // Optional, render dynamic board
+        // klotski.dynamicBoard.render(delta);
 
         // Handle 3min-Attack mode
         if (isAttackMode && elapsedTime >= attackModeTimeLimit) {
@@ -853,20 +860,44 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         }
         return username + "_save.dat"; // Unique save file for each user
     }
-
+    
     private void handleSave() {
         String saveFileName = getSaveFileName();
         File file = new File(Gdx.files.getLocalStoragePath(), saveFileName);
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-            // Save the positions of all pieces, move history, current move index, and
-            // elapsed time
-            oos.writeObject(new ArrayList<>(List.of(game.getPieces())));
+            // Serialize the game state
+            List<KlotskiGame.KlotskiPiece> pieces = new ArrayList<>(List.of(game.getPieces()));
+            oos.writeObject(pieces);
             oos.writeObject(moveHistory);
             oos.writeInt(currentMoveIndex);
             oos.writeFloat(elapsedTime);
+    
+            // Calculate the hash of the serialized data
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            try (ObjectOutputStream tempOos = new ObjectOutputStream(byteStream)) {
+                tempOos.writeObject(pieces);
+                tempOos.writeObject(moveHistory);
+                tempOos.writeInt(currentMoveIndex);
+                tempOos.writeFloat(elapsedTime);
+            }
+            String hash = calculateHash(byteStream.toByteArray());
+    
+            // Save the hash
+            oos.writeUTF(hash);
+    
             System.out.println("Game saved successfully for user: " + klotski.getLoggedInUser());
         } catch (IOException e) {
             System.err.println("Failed to save game: " + e.getMessage());
+        }
+    }
+    
+    private String calculateHash(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(data);
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
         }
     }
 
@@ -877,27 +908,48 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             System.out.println("No save file found for user: " + klotski.getLoggedInUser());
             return;
         }
-
+    
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-            // Restart the game
-            handleRestart(game);
-
             // Load the game state
             List<KlotskiGame.KlotskiPiece> pieces = (List<KlotskiGame.KlotskiPiece>) ois.readObject();
-            moveHistory = (List<int[][]>) ois.readObject();
-            currentMoveIndex = ois.readInt();
-            elapsedTime = ois.readFloat();
-
-            // Update the game state
+            List<int[][]> loadedMoveHistory = (List<int[][]>) ois.readObject();
+            int loadedCurrentMoveIndex = ois.readInt();
+            float loadedElapsedTime = ois.readFloat();
+    
+            // Read the saved hash
+            String savedHash = ois.readUTF();
+    
+            // Recompute the hash of the loaded data
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            try (ObjectOutputStream tempOos = new ObjectOutputStream(byteStream)) {
+                tempOos.writeObject(pieces);
+                tempOos.writeObject(loadedMoveHistory);
+                tempOos.writeInt(loadedCurrentMoveIndex);
+                tempOos.writeFloat(loadedElapsedTime);
+            }
+            String computedHash = calculateHash(byteStream.toByteArray());
+    
+            // Validate the hash
+            if (!savedHash.equals(computedHash)) {
+                System.err.println("Game data integrity check failed. The save file may be corrupted.");
+                return;
+            }
+    
+            // Apply the loaded game state
+            handleRestart(game);
             game.setPieces(pieces);
+            moveHistory = loadedMoveHistory;
+            currentMoveIndex = loadedCurrentMoveIndex;
+            elapsedTime = loadedElapsedTime;
+    
             updateBlocksFromGame(game);
             movesLabel.setText("Moves: " + (currentMoveIndex + 1));
-
+    
             // Update the timer label
             int minutes = (int) (elapsedTime / 60);
             int seconds = (int) (elapsedTime % 60);
             timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
-
+    
             System.out.println("Game loaded successfully for user: " + klotski.getLoggedInUser());
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Failed to load game: " + e.getMessage());

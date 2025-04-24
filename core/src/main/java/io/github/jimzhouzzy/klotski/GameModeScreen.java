@@ -23,6 +23,7 @@ public class GameModeScreen implements Screen {
         this.klotski = klotski;
         this.stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+        klotski.dynamicBoard.setStage(stage);
 
         stage.addListener(new InputListener() {
             @Override
@@ -133,6 +134,7 @@ public class GameModeScreen implements Screen {
     @Override
     public void render(float delta) {
         ScreenUtils.clear(klotski.getBackgroundColor());
+        klotski.dynamicBoard.render(delta);
         stage.act(delta);
         stage.draw();
     }

@@ -64,6 +64,8 @@ subprojects {
     implementation 'com.badlogicgames.gdx:gdx-platform:1.11.0:natives-desktop' // Native libraries
     implementation 'org.java-websocket:Java-WebSocket:1.5.3' // WebSocket library
     implementation 'org.slf4j:slf4j-simple:2.0.9'
+    implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
   }
 }
 

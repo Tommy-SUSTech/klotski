@@ -3,8 +3,10 @@ package io.github.jimzhouzzy.klotski;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -33,6 +35,7 @@ public class SettingsScreen implements Screen {
     public void create() {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+        klotski.dynamicBoard.setStage(stage);
         stage.addListener(new InputListener() {
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
@@ -105,6 +108,33 @@ public class SettingsScreen implements Screen {
         });
         table.add(darkModeCheckBox).padBottom(20).row();
 
+        // Add a checkbox for Antialiasing
+        CheckBox antialiasingCheckBox = new CheckBox("Graphics - Antialiasing", skin);
+        antialiasingCheckBox.setChecked(klotski.isAntialiasingEnabled());
+        antialiasingCheckBox.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                klotski.setAntialiasingEnabled(antialiasingCheckBox.isChecked(), stage);
+                Gdx.app.log("Settings", "Antialiasing " + (antialiasingCheckBox.isChecked() ? "enabled" : "disabled"));
+                saveSettings();
+            }
+        });
+        table.add(antialiasingCheckBox).padBottom(20).row();
+
+        // Add a checkbox for Vertical Sync
+        CheckBox vsyncCheckBox = new CheckBox("Graphics - Vertical Sync", skin);
+        vsyncCheckBox.setChecked(klotski.isVsyncEnabled());
+        vsyncCheckBox.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                klotski.setVsyncEnabled(vsyncCheckBox.isChecked(), stage);
+                Gdx.graphics.setVSync(vsyncCheckBox.isChecked());
+                Gdx.app.log("Settings", "Vertical Sync " + (vsyncCheckBox.isChecked() ? "enabled" : "disabled"));
+                saveSettings();
+            }
+        });
+        table.add(vsyncCheckBox).padBottom(20).row();
+
         // Add a "Back" button
         TextButton backButton = new TextButton("Back", skin);
         backButton.addListener(new ClickListener() {
@@ -121,11 +151,15 @@ public class SettingsScreen implements Screen {
         // Save settings to a JSON file
         Map<String, Object> settings = new HashMap<>();
         settings.put("isDarkMode", isDarkMode);
+        settings.put("antialiasingEnabled", klotski.isAntialiasingEnabled());
+        settings.put("vsyncEnabled", klotski.isVsyncEnabled());
 
         String username = klotski.getLoggedInUser();
         if (username == null || username.isEmpty()) {
-            username = "guest";
+            username = "Guest";
         }
+        // Do not log the username for now
+        username = "default";
         settings.put("username", username);
 
         Json json = new Json();
@@ -138,7 +172,9 @@ public class SettingsScreen implements Screen {
     private Map<String, Object> getDefaultSettings() {
         Map<String, Object> defaultSettings = new HashMap<>();
         defaultSettings.put("isDarkMode", false); // Default to light mode
-        defaultSettings.put("username", "guest"); // Default username
+        defaultSettings.put("username", "Guest"); // Default username
+        defaultSettings.put("antialiasingEnabled", true);
+        defaultSettings.put("vsyncEnabled", true);
         return defaultSettings;
     }
 
@@ -151,19 +187,38 @@ public class SettingsScreen implements Screen {
             Gdx.app.log("Settings", "No settings file found. Using default settings.");
             settings = getDefaultSettings();
         } else {
-            Json json = new Json();
-            settings = json.fromJson(HashMap.class, file.readString());
+            try {
+                Json json = new Json();
+                settings = json.fromJson(HashMap.class, file.readString());
+
+                // Validate the settings file
+                if (!isSettingsValid(settings)) {
+                    Gdx.app.log("Settings", "Settings file is invalid. Using default settings.");
+                    settings = getDefaultSettings();
+                }
+            } catch (Exception e) {
+                Gdx.app.log("Settings",
+                        "Failed to load settings file. Using default settings. Error: " + e.getMessage());
+                settings = getDefaultSettings();
+            }
         }
 
         // Apply settings
         String username = klotski.getLoggedInUser();
-        if (username != null && username.equals(settings.getOrDefault("username", "guest"))) {
+        // Do not specifically log username for now
+        username = "default";
+        if (username != null && username.equals(settings.getOrDefault("username", "Guest"))) {
             isDarkMode = (boolean) settings.getOrDefault("isDarkMode", getDefaultSettings().get("isDarkMode"));
+            klotski.setAntialiasingEnabled((boolean) settings.getOrDefault("antialiasingEnabled", true), stage);
+            klotski.setVsyncEnabled((boolean) settings.getOrDefault("vsyncEnabled", true), stage);
             Gdx.app.log("Settings", "Settings loaded for user: " + username);
         } else {
             Gdx.app.log("Settings", "No settings found for user: " + username + ". Using default settings.");
             settings = getDefaultSettings();
             isDarkMode = (boolean) settings.get("isDarkMode");
+            klotski.setAntialiasingEnabled((boolean) settings.get("antialiasingEnabled"), stage);
+            klotski.setVsyncEnabled((boolean) settings.get("vsyncEnabled"), stage);
+            saveSettings();
         }
 
         // Set Klotski.klotskiTheme based on isDarkMode
@@ -174,10 +229,35 @@ public class SettingsScreen implements Screen {
         }
     }
 
+    private boolean isSettingsValid(Map<String, Object> settings) {
+        try {
+            // Check if all required keys are present and of the correct type
+            if (!settings.containsKey("isDarkMode") || !(settings.get("isDarkMode") instanceof Boolean)) {
+                return false;
+            }
+            if (!settings.containsKey("antialiasingEnabled")
+                    || !(settings.get("antialiasingEnabled") instanceof Boolean)) {
+                return false;
+            }
+            if (!settings.containsKey("vsyncEnabled") || !(settings.get("vsyncEnabled") instanceof Boolean)) {
+                return false;
+            }
+            if (!settings.containsKey("username") || !(settings.get("username") instanceof String)) {
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            Gdx.app.log("Settings", "Error validating settings: " + e.getMessage());
+            return false;
+        }
+    }
+
     @Override
     public void render(float delta) {
         klotski.setGlClearColor();
         Gdx.gl.glClear(Gdx.gl.GL_COLOR_BUFFER_BIT);
+
+        klotski.dynamicBoard.render(delta); // Render the dynamic board
 
         // Render the stage
         stage.act(delta);
@@ -212,4 +292,5 @@ public class SettingsScreen implements Screen {
     @Override
     public void resume() {
     }
+
 }
