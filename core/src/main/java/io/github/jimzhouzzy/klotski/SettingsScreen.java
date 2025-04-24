@@ -128,12 +128,30 @@ public class SettingsScreen implements Screen {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 klotski.setVsyncEnabled(vsyncCheckBox.isChecked(), stage);
+                // Is this line necessary?
                 Gdx.graphics.setVSync(vsyncCheckBox.isChecked());
                 Gdx.app.log("Settings", "Vertical Sync " + (vsyncCheckBox.isChecked() ? "enabled" : "disabled"));
                 saveSettings();
             }
         });
         table.add(vsyncCheckBox).padBottom(20).row();
+        
+        // Add a checkbox for music 
+        CheckBox musicCheckBox = new CheckBox("Audio - Music", skin);
+        musicCheckBox.setChecked(klotski.isAntialiasingEnabled());
+        musicCheckBox.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                if (musicCheckBox.isChecked()) {
+                    klotski.setMusicEnabled(true);
+                } else {
+                    klotski.setMusicEnabled(false);
+                }
+                Gdx.app.log("Settings", "Music " + (musicCheckBox.isChecked() ? "enabled" : "disabled"));
+                saveSettings();
+            }
+        });
+        table.add(musicCheckBox).padBottom(20).row();
 
         // Add a "Back" button
         TextButton backButton = new TextButton("Back", skin);
@@ -153,6 +171,7 @@ public class SettingsScreen implements Screen {
         settings.put("isDarkMode", isDarkMode);
         settings.put("antialiasingEnabled", klotski.isAntialiasingEnabled());
         settings.put("vsyncEnabled", klotski.isVsyncEnabled());
+        settings.put("musicEnabled", klotski.isMusicEnabled());
 
         String username = klotski.getLoggedInUser();
         if (username == null || username.isEmpty()) {
@@ -211,6 +230,7 @@ public class SettingsScreen implements Screen {
             isDarkMode = (boolean) settings.getOrDefault("isDarkMode", getDefaultSettings().get("isDarkMode"));
             klotski.setAntialiasingEnabled((boolean) settings.getOrDefault("antialiasingEnabled", true), stage);
             klotski.setVsyncEnabled((boolean) settings.getOrDefault("vsyncEnabled", true), stage);
+            klotski.setMusicEnabled((boolean) settings.getOrDefault("musicEnabled", true));
             Gdx.app.log("Settings", "Settings loaded for user: " + username);
         } else {
             Gdx.app.log("Settings", "No settings found for user: " + username + ". Using default settings.");
@@ -218,6 +238,7 @@ public class SettingsScreen implements Screen {
             isDarkMode = (boolean) settings.get("isDarkMode");
             klotski.setAntialiasingEnabled((boolean) settings.get("antialiasingEnabled"), stage);
             klotski.setVsyncEnabled((boolean) settings.get("vsyncEnabled"), stage);
+            klotski.setMusicEnabled((boolean) settings.getOrDefault("musicEnabled", true));
             saveSettings();
         }
 
@@ -240,6 +261,9 @@ public class SettingsScreen implements Screen {
                 return false;
             }
             if (!settings.containsKey("vsyncEnabled") || !(settings.get("vsyncEnabled") instanceof Boolean)) {
+                return false;
+            }
+            if (!settings.containsKey("musicEnabled") || !(settings.get("vsyncEnabled") instanceof Boolean)) {
                 return false;
             }
             if (!settings.containsKey("username") || !(settings.get("username") instanceof String)) {
@@ -267,6 +291,7 @@ public class SettingsScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
+        klotski.dynamicBoard = new DynamicBoard(klotski, stage);
     }
 
     @Override

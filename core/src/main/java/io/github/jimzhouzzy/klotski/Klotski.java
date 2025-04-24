@@ -53,8 +53,16 @@ public class Klotski extends Game {
     private boolean vsyncEnabled = true; // Default to enabled
     private Lwjgl3ApplicationConfiguration lwjgl3Config;
     private Skin skin;
+    private boolean musicEnabled;
 
     public void create() {
+        // Load the music file
+        // MUST before load configurations
+        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/soundtrack.mp3"));
+        backgroundMusic.setLooping(true);
+        backgroundMusic.setVolume(1f);
+        backgroundMusic.play();
+
         // Load the skin for UI components
         skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
         
@@ -79,12 +87,6 @@ public class Klotski extends Game {
         this.mainScreen = new MainScreen(this);
         this.gameScreen = new GameScreen(this);
         this.setScreen(mainScreen);
-
-        // Load the music file
-        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/soundtrack.mp3"));
-        backgroundMusic.setLooping(true);
-        backgroundMusic.setVolume(1f);
-        backgroundMusic.play();
 
         // Start web socket server
         webSocketServer = new GameWebSocketServer(8014);
@@ -371,5 +373,20 @@ public class Klotski extends Game {
 
         // Add the dialog group to the stage
         stage.addActor(dialogGroup);
+    }
+
+    public void setMusicEnabled(boolean enabled) {
+        if (backgroundMusic != null) {
+            if (enabled) {
+                backgroundMusic.play();
+            } else {
+                backgroundMusic.stop();
+            }
+            this.musicEnabled = enabled;
+        }
+    }
+
+    public boolean isMusicEnabled() {
+        return musicEnabled;
     }
 }

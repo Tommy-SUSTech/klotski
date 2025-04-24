@@ -75,6 +75,8 @@ public class Lwjgl3Launcher {
     }
 
     private static boolean[] loadConfiguration() {
+        // TODO: Add frame rate option
+
         final String SETTINGS_FILE = "settings.json";
         File file = new File(SETTINGS_FILE);
         Map<String, Object> settings;
@@ -102,7 +104,8 @@ public class Lwjgl3Launcher {
         String username = "default";
         boolean antialiasingEnabled = (boolean) settings.get("antialiasingEnabled");
         boolean useVsync = (boolean) settings.get("vsyncEnabled");
-        return new boolean[] { antialiasingEnabled, useVsync };
+        boolean musicEnabled = (boolean) settings.get("musicEnabled");
+        return new boolean[] { antialiasingEnabled, useVsync, musicEnabled };
     }
 
     private static boolean isSettingsValid(Map<String, Object> settings) {
@@ -116,6 +119,9 @@ public class Lwjgl3Launcher {
                 return false;
             }
             if (!settings.containsKey("vsyncEnabled") || !(settings.get("vsyncEnabled") instanceof Boolean)) {
+                return false;
+            }
+            if (!settings.containsKey("musicEnabled") || !(settings.get("vsyncEnabled") instanceof Boolean)) {
                 return false;
             }
             if (!settings.containsKey("username") || !(settings.get("username") instanceof String)) {
@@ -134,6 +140,7 @@ public class Lwjgl3Launcher {
         defaultSettings.put("username", "Guest"); // Default username
         defaultSettings.put("antialiasingEnabled", true);
         defaultSettings.put("vsyncEnabled", true);
+        defaultSettings.put("musicEnabled", true);
         return defaultSettings;
     }
 }

@@ -1,4 +1,8 @@
 {
+musicEnabled: {
+	class: java.lang.Boolean
+	value: true
+}
 isDarkMode: {
 	class: java.lang.Boolean
 	value: false
