@@ -138,7 +138,7 @@ public class SettingsScreen implements Screen {
         
         // Add a checkbox for music 
         CheckBox musicCheckBox = new CheckBox("Audio - Music", skin);
-        musicCheckBox.setChecked(klotski.isAntialiasingEnabled());
+        musicCheckBox.setChecked(klotski.isMusicEnabled());
         musicCheckBox.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
