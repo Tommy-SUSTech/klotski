@@ -22,6 +22,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 import io.github.jimzhouzzy.klotski.GameModeScreen;
@@ -76,6 +77,8 @@ public class DynamicBoard {
     private float interpolationSpeedMultiplier = 1f; // Speed of color interpolation
     private List<Vector2[]> topRectangleVectors;
     private List<Float> topRectangleYs; 
+    private float screenWidth;
+    private float screenHeight;
 
     public DynamicBoard(final Klotski klotski, Stage stage) {
         this.klotski = klotski;
@@ -97,7 +100,7 @@ public class DynamicBoard {
         moveDownward = false;
         mutateColorFollowing = false;
 
-        baseTileSize = 50f;
+        baseTileSize = Gdx.graphics.getWidth() / 21.6f; // 1080 / 21.6 = 50
 
         offsetX = baseTileSize / 2;
         offsetY = 0f;
@@ -297,8 +300,8 @@ public class DynamicBoard {
         // offsetX += delta * 20; // Move 20 pixels per second horizontally
         offsetY += delta * 50; // Move 50 pixels per second vertically
 
-        float screenWidth = Gdx.graphics.getWidth();
-        float screenHeight = Gdx.graphics.getHeight();
+        screenWidth = Gdx.graphics.getWidth();
+        screenHeight = Gdx.graphics.getHeight();
 
         float focalLength = 1500.0f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Focal
                                                                                                                         // length
@@ -507,14 +510,31 @@ public class DynamicBoard {
         return veryComplexFunction((double) x);
     }
 
-    public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
-        dispose();
-        create();
-    }
+public void resize(int width, int height) {
+    // Store old dimensions
+    float oldWidth = screenWidth;
+    float oldHeight = screenHeight;
+    float oldBaseTileSize = baseTileSize;
+
+    // Recalculate offsets and scaling factors based on the new dimensions
+    screenWidth = Gdx.graphics.getWidth();
+    screenHeight = Gdx.graphics.getHeight();
+
+    // Adjust the base tile size to maintain aspect ratio
+    baseTileSize = Math.min(screenWidth, screenHeight + 1000000) / 21.6f;
+    shapeRenderer = new ShapeRenderer();
+
+    // Update offsets to center the content
+    offsetX = offsetX / oldBaseTileSize * baseTileSize;
+    offsetY = offsetY / oldBaseTileSize * baseTileSize;
+    offsetZ = offsetZ / oldBaseTileSize * baseTileSize;
+
+    // Log the new dimensions for debugging
+    // System.out.println("Resized to: " + width + "x" + height);
+    // System.out.println("Base tile size: " + baseTileSize);
+}
 
     public void dispose() {
-        stage.dispose();
         skin.dispose();
         shapeRenderer.dispose();
     }
