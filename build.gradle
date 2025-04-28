@@ -66,6 +66,7 @@ subprojects {
     implementation 'org.slf4j:slf4j-simple:2.0.9'
     implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
     implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
+    implementation 'com.google.code.gson:gson:2.8.9'
   }
 }
 

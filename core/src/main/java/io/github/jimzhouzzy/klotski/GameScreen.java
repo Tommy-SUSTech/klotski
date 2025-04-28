@@ -8,6 +8,8 @@ package io.github.jimzhouzzy.klotski;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Net;
+import com.badlogic.gdx.Net.HttpResponseListener;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
@@ -18,6 +20,7 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.net.HttpRequestBuilder;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.ApplicationAdapter;
@@ -43,8 +46,20 @@ import io.github.jimzhouzzy.klotski.KlotskiSolver;
 import io.github.jimzhouzzy.klotski.RectangleBlockActor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import java.io.*;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class GameScreen extends ApplicationAdapter implements Screen {
     private static final String SAVE_FILE = "game_save.dat";
@@ -867,46 +882,160 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             // elapsed time
             oos.writeObject(new ArrayList<>(List.of(game.getPieces())));
             oos.writeObject(moveHistory);
-            oos.writeInt(currentMoveIndex);
-            oos.writeFloat(elapsedTime);
+            oos.writeObject(new GameState(currentMoveIndex, elapsedTime));
             System.out.println("Game saved successfully for user: " + klotski.getLoggedInUser());
+            // print save file content
+            System.out.println("Save file content: " + new String(Files.readAllBytes(file.toPath())));
+
+            // Upload the save to the server
+            uploadSaveToServer(Files.readAllBytes(file.toPath()));
         } catch (IOException e) {
             System.err.println("Failed to save game: " + e.getMessage());
         }
     }
 
+    private void uploadSaveToServer(byte[] saveData) {
+        // print raw data length
+        System.out.println("Raw save data length: " + saveData.length);
+        // Convert to base 64
+        String encodedSaveData = java.util.Base64.getEncoder().encodeToString(saveData);
+        // print encoded save data length
+        System.out.println("Encoded save data length: " + encodedSaveData.length());
+        // print encoded save data
+        System.out.println("Encoded save data: " + encodedSaveData);
+
+        // Read the save file content
+        // String saveData = new String(Files.readAllBytes(saveFile.toPath()));
+
+        // Create a hash for validation (optional)
+        String hash = Integer.toHexString(encodedSaveData.hashCode());
+
+        // Prepare the JSON payload
+        String username = klotski.getLoggedInUser();
+        String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").format(new Date());
+        String payload = new Gson().toJson(Map.of(
+                "username", username,
+                "date", date,
+                "hash", hash,
+                "saveData", encodedSaveData));
+
+        // Send the HTTP POST request
+        HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
+        Net.HttpRequest request = requestBuilder
+                .newRequest()
+                .method(Net.HttpMethods.POST)
+                .url("http://localhost:8001/gameSave/uploadSave")
+                .header("Content-Type", "application/json")
+                .content(payload)
+                .build();
+
+        Gdx.net.sendHttpRequest(request, new HttpResponseListener() {
+            @Override
+            public void handleHttpResponse(Net.HttpResponse httpResponse) {
+                String response = httpResponse.getResultAsString();
+                System.out.println("Server response: " + response);
+            }
+
+            @Override
+            public void failed(Throwable t) {
+                System.err.println("Failed to upload save: " + t.getMessage());
+            }
+
+            @Override
+            public void cancelled() {
+                System.err.println("Save upload cancelled");
+            }
+        });
+    }
+
     private void handleLoad() {
-        String saveFileName = getSaveFileName();
-        File file = new File(Gdx.files.getLocalStoragePath(), saveFileName);
-        if (!file.exists()) {
-            System.out.println("No save file found for user: " + klotski.getLoggedInUser());
-            return;
-        }
+        String username = klotski.getLoggedInUser();
 
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-            // Restart the game
-            handleRestart(game);
+        fetchLatestSaveFromServer(username, saveData -> {
+            if (saveData == null) {
+                System.out.println("No save file found for user: " + username);
+                return;
+            }
 
-            // Load the game state
-            List<KlotskiGame.KlotskiPiece> pieces = (List<KlotskiGame.KlotskiPiece>) ois.readObject();
-            moveHistory = (List<int[][]>) ois.readObject();
-            currentMoveIndex = ois.readInt();
-            elapsedTime = ois.readFloat();
+            try {
+                byte[] decodedSaveData = java.util.Base64.getDecoder().decode(saveData);
+                System.out.println("Decoded save data length: " + decodedSaveData.length);
 
-            // Update the game state
-            game.setPieces(pieces);
-            updateBlocksFromGame(game);
-            movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+                try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(decodedSaveData))) {
+                    handleRestart(game);
 
-            // Update the timer label
-            int minutes = (int) (elapsedTime / 60);
-            int seconds = (int) (elapsedTime % 60);
-            timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+                    List<KlotskiGame.KlotskiPiece> pieces = (List<KlotskiGame.KlotskiPiece>) ois.readObject();
+                    moveHistory = (List<int[][]>) ois.readObject();
+                    GameState gameState = (GameState) ois.readObject();
+                    currentMoveIndex = gameState.getCurrentMoveIndex();
+                    elapsedTime = gameState.getElapsedTime();
 
-            System.out.println("Game loaded successfully for user: " + klotski.getLoggedInUser());
-        } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Failed to load game: " + e.getMessage());
-        }
+                    game.setPieces(pieces);
+                    updateBlocksFromGame(game);
+                    movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+
+                    int minutes = (int) (elapsedTime / 60);
+                    int seconds = (int) (elapsedTime % 60);
+                    timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+
+                    System.out.println("Game loaded successfully for user: " + username);
+                }
+            } catch (IllegalArgumentException e) {
+                System.err.println("Failed to decode save data: " + e.getMessage());
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+                System.err.println("Failed to load game: " + e.getMessage());
+            }
+        });
+    }
+
+    private void fetchLatestSaveFromServer(String username, Consumer<String> callback) {
+        // Send the HTTP GET request
+        String url = "http://localhost:8001/gameSave/getSaves?username=" + username;
+        HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
+        Net.HttpRequest request = requestBuilder
+                .newRequest()
+                .method(Net.HttpMethods.GET)
+                .url(url)
+                .build();
+
+        Gdx.net.sendHttpRequest(request, new HttpResponseListener() {
+            @Override
+            public void handleHttpResponse(Net.HttpResponse httpResponse) {
+                System.out.println("Raw server response: " + httpResponse);
+                int statusCode = httpResponse.getStatus().getStatusCode();
+                System.out.println("HTTP Status Code: " + statusCode);
+                String response = httpResponse.getResultAsString();
+                System.out.println("Server response: " + response);
+                Map<String, Object> responseMap = new Gson().fromJson(response, Map.class);
+
+                if ((double) responseMap.get("code") == 200) {
+                    List<Map<String, String>> saves = (List<Map<String, String>>) responseMap.get("saves");
+                    if (!saves.isEmpty()) {
+                        String latestSaveData = saves.get(0).get("saveData");
+                        System.out.println("Latest save data: " + latestSaveData);
+                        callback.accept(latestSaveData);
+                    } else {
+                        callback.accept(null);
+                    }
+                } else {
+                    System.err.println("Failed to fetch saves: " + responseMap.get("message"));
+                    callback.accept(null);
+                }
+            }
+
+            @Override
+            public void failed(Throwable t) {
+                System.err.println("Failed to fetch saves: " + t.getMessage());
+                callback.accept(null);
+            }
+
+            @Override
+            public void cancelled() {
+                System.err.println("Fetch saves request cancelled");
+                callback.accept(null);
+            }
+        });
     }
 
     public KlotskiGame getGame() {

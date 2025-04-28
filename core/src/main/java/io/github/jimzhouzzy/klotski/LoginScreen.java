@@ -20,8 +20,12 @@ import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.Net;
+import com.badlogic.gdx.net.HttpRequestBuilder;
+import com.badlogic.gdx.Net.HttpResponseListener;
 
 import java.io.*;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -109,12 +113,7 @@ public class LoginScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
                 String username = usernameField.getText();
                 String password = passwordField.getText();
-                if (authenticate(username, password)) {
-                    klotski.setLoggedInUser(username); // Set the logged-in user's name
-                    klotski.setScreen(klotski.mainScreen); // Navigate back to the main screen
-                } else {
-                    showErrorDialog("Invalid credentials");
-                }
+                login(username, password); // Use the new login method
             }
         });
         table.add(loginButton).width(200).height(50).padBottom(20).row();
@@ -126,11 +125,7 @@ public class LoginScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
                 String username = usernameField.getText();
                 String password = passwordField.getText();
-                if (register(username, password)) {
-                    showErrorDialog("Registration successful! Please log in.");
-                } else {
-                    showErrorDialog("Registration failed. Username may already exist.");
-                }
+                register(username, password);
             }
         });
         table.add(registerButton).width(200).height(50).padBottom(20).row();
@@ -148,7 +143,7 @@ public class LoginScreen implements Screen {
 
     private boolean authenticate(String username, String password) {
         // Do basic validation
-        if (!basicValication(username, password)) {
+        if (!basicValidation(username, password)) {
             return false;
         }
 
@@ -156,14 +151,14 @@ public class LoginScreen implements Screen {
         return userDatabase.containsKey(username) && userDatabase.get(username).equals(password);
     }
 
-    private boolean register(String username, String password) {
+    private boolean registerLocal(String username, String password) {
         // Check if the username already exists
         if (userDatabase.containsKey(username)) {
             return false;
         }
 
         // Do basic validation
-        if (!basicValication(username, password)) {
+        if (!basicValidation(username, password)) {
             return false;
         }
 
@@ -176,7 +171,7 @@ public class LoginScreen implements Screen {
         return true;
     }
 
-    private boolean basicValication(String username, String password) {
+    private boolean basicValidation(String username, String password) {
         // Check if the username is valid (not empty)
         if (username == null || username.isEmpty()) {
             return false;
@@ -240,14 +235,16 @@ public class LoginScreen implements Screen {
         // Create a background for the dialog
         Image background = new Image(skin.newDrawable("white", new Color(1.0f, 1.0f, 1.0f, 0.7f)));
         background.setSize(400, 250);
-        background.setPosition((stage.getWidth() - background.getWidth()) / 2, (stage.getHeight() - background.getHeight()) / 2);
+        background.setPosition((stage.getWidth() - background.getWidth()) / 2,
+                (stage.getHeight() - background.getHeight()) / 2);
         dialogGroup.addActor(background);
 
         // Create a title label for the dialog
         Label titleLabel = new Label("Error", skin);
         titleLabel.setColor(Color.RED);
         titleLabel.setFontScale(2.0f);
-        titleLabel.setPosition(background.getX() + (background.getWidth() - titleLabel.getWidth()) / 2, background.getY() + 180);
+        titleLabel.setPosition(background.getX() + (background.getWidth() - titleLabel.getWidth()) / 2,
+                background.getY() + 180);
         dialogGroup.addActor(titleLabel);
 
         // Create a label for the error message
@@ -262,7 +259,8 @@ public class LoginScreen implements Screen {
         // Create an OK button
         TextButton okButton = new TextButton("OK", skin);
         okButton.setSize(100, 40);
-        okButton.setPosition(background.getX() + (background.getWidth() - okButton.getWidth()) / 2, background.getY() + 20);
+        okButton.setPosition(background.getX() + (background.getWidth() - okButton.getWidth()) / 2,
+                background.getY() + 20);
         okButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -273,6 +271,89 @@ public class LoginScreen implements Screen {
 
         // Add the dialog group to the stage
         stage.addActor(dialogGroup);
+    }
+
+    private void login(String username, String password) {
+        // Create HTTP request
+        HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
+        Net.HttpRequest request = requestBuilder
+                .newRequest()
+                .method(Net.HttpMethods.POST)
+                .url("http://localhost:8001/login")
+                .content("username=" + username + "&password=" + password)
+                .build();
+
+        // Send request
+        Gdx.net.sendHttpRequest(request, new HttpResponseListener() {
+            @Override
+            public void handleHttpResponse(Net.HttpResponse httpResponse) {
+                String response = httpResponse.getResultAsString();
+                Gdx.app.postRunnable(() -> {
+                    if ("success".equals(response)) {
+                        klotski.setLoggedInUser(username); // Set the logged-in user's name
+                        klotski.setScreen(klotski.mainScreen); // Navigate to the main screen
+                    } else {
+                        showErrorDialog("Invalid credentials");
+                    }
+                });
+            }
+
+            @Override
+            public void failed(Throwable t) {
+                showErrorDialog("Failed to connect to the server: " + t.getMessage());
+            }
+
+            @Override
+            public void cancelled() {
+                showErrorDialog("Request cancelled");
+            }
+        });
+    }
+    
+    private void register(String username, String password) {
+        try {
+            // Encode parameters
+            String content = "username=" + URLEncoder.encode(username, "UTF-8") +
+                    "&password=" + URLEncoder.encode(password, "UTF-8");
+
+            // Create HTTP request
+            HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
+            Net.HttpRequest request = requestBuilder
+                    .newRequest()
+                    .method(Net.HttpMethods.POST)
+                    .url("http://localhost:8001/signup") // Ensure this matches your server's URL
+                    .content(content)
+                    .build();
+
+            // Send request
+            Gdx.net.sendHttpRequest(request, new HttpResponseListener() {
+                @Override
+                public void handleHttpResponse(Net.HttpResponse httpResponse) {
+                    String response = httpResponse.getResultAsString();
+                    if ("success".equals(response)) {
+                        showErrorDialog("Registration successful! Please log in.");
+                    } else if ("failure: invalid input".equals(response)) {
+                        showErrorDialog("Registration failed. Invalid input.");
+                    } else if ("failure: user already exists".equals(response)) {
+                        showErrorDialog("Registration failed. Username already exists.");
+                    } else {
+                        showErrorDialog("Registration failed. Unknown error.");
+                    }
+                }
+
+                @Override
+                public void failed(Throwable t) {
+                    showErrorDialog("Failed to connect to the server: " + t.getMessage());
+                }
+
+                @Override
+                public void cancelled() {
+                    showErrorDialog("Request cancelled");
+                }
+            });
+        } catch (UnsupportedEncodingException e) {
+            showErrorDialog("Failed to encode request parameters: " + e.getMessage());
+        }
     }
 
     @Override
