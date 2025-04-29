@@ -41,7 +41,7 @@ jobs:
         shell: pwsh
 
       - name: Upload Bundled Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bundled-${{ matrix.os }}
           path: bundled/
