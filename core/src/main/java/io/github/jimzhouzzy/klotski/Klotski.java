@@ -27,6 +27,8 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowConfiguration;
 
 import java.io.*;
 import java.lang.reflect.Field;
+import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 enum KlotskiTheme {
     DARK,
@@ -35,6 +37,7 @@ enum KlotskiTheme {
 
 public class Klotski extends Game {
     private GameWebSocketServer webSocketServer;
+    private GameWebSocketClient webSocketClient;
 
     private static final String LOGIN_STATUS_FILE = "login_status.dat"; // File to store login status
     public SpriteBatch batch;
@@ -89,10 +92,34 @@ public class Klotski extends Game {
         this.gameScreen = new GameScreen(this);
         this.setScreen(mainScreen);
 
-        // Start web socket server
-        webSocketServer = new GameWebSocketServer(8014);
+        // Start local web socket server
+        webSocketServer = new GameWebSocketServer(this, 8014);
         webSocketServer.start();
 
+        // Start online websocket client if not in offline mode
+        if (!isOfflineMode()) {
+            try {
+                // Connect to the WebSocket server
+                URI serverUri = new URI("ws://42.194.132.147:8002");
+                webSocketClient = new GameWebSocketClient(this, serverUri);
+                System.out.println("Attempting to connect to WebSocket server: " + serverUri);
+
+                // Attempt to connect with a timeout
+                boolean connected = webSocketClient.connectBlocking(5, TimeUnit.SECONDS);
+
+                if (connected) {
+                    System.out.println("WebSocket connection established successfully.");
+                } else {
+                    System.err.println("Failed to connect to WebSocket server, timed out.");
+                }
+            } catch (Exception e) {
+                System.err.println("Error initializing WebSocket client: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("Offline mode enabled. Skipping WebSocket client initialization.");
+        }
+        
         // Start html web server
         try {
             webServer = new WebServer(8013);
@@ -172,10 +199,22 @@ public class Klotski extends Game {
         }
         webSocketServer.close();
         webServer.close();
+        if (webSocketClient != null) {
+            webSocketClient.closeSocket = true;
+            webSocketClient.close();
+        }
+        if (backgroundMusic != null) {
+            backgroundMusic.dispose();
+        }
+        System.out.println("Klotski disposed");
     }
 
     public GameWebSocketServer getWebSocketServer() {
         return webSocketServer;
+    }
+
+    public GameWebSocketClient getWebSocketClient() {
+        return webSocketClient;
     }
 
     public void setGlClearColor() {

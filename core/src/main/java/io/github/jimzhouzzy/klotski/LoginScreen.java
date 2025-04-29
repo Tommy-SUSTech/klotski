@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
@@ -301,10 +302,10 @@ public class LoginScreen implements Screen {
 
         // Create a title label for the dialog
         Label titleLabel = new Label(title, skin);
-        // titleLabel.setColor(Color.RED);
         titleLabel.setFontScale(2.0f);
-        titleLabel.setPosition(background.getX() + (background.getWidth() - titleLabel.getWidth()) / 2,
-                background.getY() + 180);
+        titleLabel.setAlignment(Align.center); // Align the text to the center
+        titleLabel.setSize(background.getWidth(), titleLabel.getHeight()); // Match the width of the background
+        titleLabel.setPosition(background.getX(), background.getY() + 180); // Position it relative to the background
         dialogGroup.addActor(titleLabel);
 
         // Create a label for the error message

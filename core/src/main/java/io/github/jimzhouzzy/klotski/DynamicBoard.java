@@ -109,10 +109,10 @@ public class DynamicBoard {
         offsetX = baseTileSize / 2;
         offsetY = 0f;
         offsetZ = 0f;
-        focalLength = 1500.0f;
-        focalLengthTarget = focalLength;
-        focalLengthPrevious = focalLength;
-        focalLengthAnimationSpeed = 1.0f;
+        focalLength = 10000.0f;
+        focalLengthTarget = 1500.0f;
+        focalLengthPrevious = 1500.0f;
+        focalLengthAnimationSpeed = 4.0f;
 
         frameCount = 0;
         frameCountOffset = random.nextInt(10000); // Random offset for the frame count

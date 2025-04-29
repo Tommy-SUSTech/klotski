@@ -160,12 +160,14 @@ public class GameModeScreen implements Screen {
 
     @Override
     public void dispose() {
+        klotski.dynamicBoard.triggerAnimateFocalLengthRevert();
         stage.dispose();
         skin.dispose();
     }
 
     @Override
     public void hide() {
+        klotski.dynamicBoard.triggerAnimateFocalLengthRevert();
         Gdx.input.setInputProcessor(null);
     }
 

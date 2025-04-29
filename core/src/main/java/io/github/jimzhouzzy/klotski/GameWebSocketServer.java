@@ -11,9 +11,11 @@ import java.util.Set;
 
 public class GameWebSocketServer extends WebSocketServer {
     private final Set<WebSocket> connections = Collections.synchronizedSet(new HashSet<>());
+    private Klotski klotski;
 
-    public GameWebSocketServer(int port) {
+    public GameWebSocketServer(Klotski klotski, int port) {
         super(new InetSocketAddress(port));
+        this.klotski = klotski;
     }
 
     @Override

@@ -358,6 +358,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 piece.setPosition(new int[] { toRow, toCol });
                 recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
                 isTerminal = game.isTerminal(); // Check if the game is in a terminal state
+                broadcastGameState();
                 block.addAction(Actions.sequence(
                         Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
                         Actions.run(() -> {
@@ -1150,6 +1151,14 @@ public class GameScreen extends ApplicationAdapter implements Screen {
 
     public void broadcastGameState() {
         String gameState = game.toString();
-        klotski.getWebSocketServer().broadcastGameState(gameState);
+        try {
+            klotski.getWebSocketServer().broadcastGameState(gameState);
+            if(klotski.getWebSocketClient() != null)
+                klotski.getWebSocketClient().sendBoardState(gameState);
+            else
+                System.out.println("WebSocket client is not connected.");
+        } catch (Exception e) {
+            System.err.println("Failed to broadcast game state: " + e.getMessage());
+        }
     }
 }
