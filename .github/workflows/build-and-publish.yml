@@ -1,0 +1,72 @@
+name: Build and Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  bundle:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install jpackage (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk openjdk-17-jre
+
+      - name: Run bundling script (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x ./bundle.sh
+          ./bundle.sh
+
+      - name: Run bundling script (Windows)
+        if: runner.os == 'Windows'
+        run: ./bundle.ps1
+        shell: pwsh
+
+      - name: Upload Bundled Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bundled-${{ matrix.os }}
+          path: bundled/
+
+  release:
+    needs: bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: all-artifacts
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Klotski
+          files: |
+            all-artifacts/**/*
