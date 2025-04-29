@@ -1,6 +1,9 @@
 ## User data
 assets/*.dat
 
+## .jar files
+lwjgl3/build/libs/*.jar
+
 ## Gradle:
 .gradle/
 gradle-app.setting
