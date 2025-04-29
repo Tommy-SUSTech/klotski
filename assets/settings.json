@@ -1,7 +1,7 @@
 {
 offlineMode: {
 	class: java.lang.Boolean
-	value: true
+	value: false
 }
 musicEnabled: {
 	class: java.lang.Boolean

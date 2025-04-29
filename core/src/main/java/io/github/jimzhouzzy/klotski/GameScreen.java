@@ -932,7 +932,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         Net.HttpRequest request = requestBuilder
                 .newRequest()
                 .method(Net.HttpMethods.POST)
-                .url("http://localhost:8001/gameSave/uploadSave")
+                .url("http://42.194.132.147:8001/gameSave/uploadSave")
                 .header("Content-Type", "application/json")
                 .content(payload)
                 .build();
@@ -999,7 +999,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
 
     private void fetchLatestSaveFromServer(String username, Consumer<String> callback) {
         // Send the HTTP GET request
-        String url = "http://localhost:8001/gameSave/getSaves?username=" + username;
+        String url = "http://42.194.132.147:8001/gameSave/getSaves?username=" + username;
         HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
         Net.HttpRequest request = requestBuilder
                 .newRequest()
