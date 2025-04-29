@@ -1,7 +1,7 @@
 # === Configuration ===
 $AppName     = "Klotski"
 $MainClass   = "io.github.jimzhouzzy.klotski.lwjgl3.Lwjgl3Launcher"
-# $IconPath    = "icons\icon.ico"      # <-- Optional, must be .ico on Windows
+$IconPath    = "icons\icon.ico"      # <-- Optional, must be .ico on Windows
 $JarDir      = "lwjgl3\build\libs"
 $OutputDir   = "bundled"
 
@@ -35,6 +35,11 @@ $jpackageArgs = @(
     "--vendor", "JimZhouZZY"
     "--java-options -XstartOnFirstThread"
 )
+
+# none null check for icon
+if ($null -ne $IconPath -and $IconPath -ne "" -and Test-Path $IconPath) {
+    $jpackageArgs += "--icon", $IconPath
+}
 
 if (Test-Path $IconPath) {
     $jpackageArgs += "--icon", $IconPath
