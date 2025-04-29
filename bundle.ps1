@@ -36,12 +36,8 @@ $jpackageArgs = @(
     "--java-options -XstartOnFirstThread"
 )
 
-# none null check for icon
+# None null check for icon
 if ($null -ne $IconPath -and $IconPath -ne "" -and Test-Path $IconPath) {
-    $jpackageArgs += "--icon", $IconPath
-}
-
-if (Test-Path $IconPath) {
     $jpackageArgs += "--icon", $IconPath
 }
 
