@@ -79,6 +79,10 @@ public class DynamicBoard {
     private List<Float> topRectangleYs; 
     private float screenWidth;
     private float screenHeight;
+    private float focalLength;
+    private float focalLengthPrevious;
+    private float focalLengthTarget;
+    private float focalLengthAnimationSpeed;
 
     public DynamicBoard(final Klotski klotski, Stage stage) {
         this.klotski = klotski;
@@ -105,6 +109,10 @@ public class DynamicBoard {
         offsetX = baseTileSize / 2;
         offsetY = 0f;
         offsetZ = 0f;
+        focalLength = 1500.0f;
+        focalLengthTarget = focalLength;
+        focalLengthPrevious = focalLength;
+        focalLengthAnimationSpeed = 1.0f;
 
         frameCount = 0;
         frameCountOffset = random.nextInt(10000); // Random offset for the frame count
@@ -303,11 +311,8 @@ public class DynamicBoard {
         screenWidth = Gdx.graphics.getWidth();
         screenHeight = Gdx.graphics.getHeight();
 
-        float focalLength = 1500.0f * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f)); // Focal
-                                                                                                                        // length
-                                                                                                                        // for
-                                                                                                                        // perspective
-                                                                                                                        // projection
+        float deltaFocalLength = (focalLengthTarget - focalLength) * delta * focalLengthAnimationSpeed;
+        focalLength = (focalLength + deltaFocalLength);
         float centerX = screenWidth / 2f
                 * (1 - 0.2f * (float) veryComplexFunction((frameCount + frameCountOffset) / 5000f));
         float centerZ = (screenHeight + offsetZ) / 3.75f
@@ -850,5 +855,24 @@ public void resize(int width, int height) {
     public void setStage(Stage stage) {
         this.stage = stage;
         create();
+    }
+
+    public void triggerAnimateFocalLength(float to, float speed){
+        float from = focalLength;
+        triggerAnimateFocalLength(from, to, speed);
+    }
+
+    public void triggerAnimateFocalLength(float from, float to, float speed){
+        focalLengthAnimationSpeed = speed;
+        focalLength = from;
+        triggerAnimateFocalLength(to);
+    }
+
+    public void triggerAnimateFocalLength(float to){
+        focalLengthTarget = to;
+    }
+
+    public void triggerAnimateFocalLengthRevert(){
+        triggerAnimateFocalLength(focalLengthPrevious, 10.0f);
     }
 }

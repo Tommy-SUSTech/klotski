@@ -394,7 +394,7 @@ public class LoginScreen implements Screen {
                 public void handleHttpResponse(Net.HttpResponse httpResponse) {
                     String response = httpResponse.getResultAsString();
                     if ("success".equals(response)) {
-                        showDialog("Registration Complete", "Registration successful! Please log in.");
+                        showDialog("Complete", "Registration successful! Please log in.");
                     } else if ("failure: invalid input".equals(response)) {
                         showErrorDialog("Registration failed. Invalid input.");
                     } else if ("failure: user already exists".equals(response)) {

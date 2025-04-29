@@ -12,6 +12,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
+import com.badlogic.gdx.Input;
 
 public class GameModeScreen implements Screen {
 
@@ -58,6 +59,18 @@ public class GameModeScreen implements Screen {
                 resizedClickedPixmap.dispose();
                 clickedPixmap.dispose();
                 Gdx.graphics.setCursor(clickedCursor);
+            }
+        });
+
+        stage.addListener(new InputListener() {
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                switch (keycode) {
+                    case Input.Keys.ESCAPE:
+                        handleBack();
+                        return true;
+                }
+                return false;
             }
         });
 
@@ -125,7 +138,7 @@ public class GameModeScreen implements Screen {
         backButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                klotski.setScreen(klotski.mainScreen); // Navigate back to the main screen
+                handleBack();
             }
         });
         table.add(backButton).width(300).height(50);
@@ -166,4 +179,9 @@ public class GameModeScreen implements Screen {
 
     @Override
     public void resume() {}
+
+    private void handleBack() {
+        klotski.setScreen(klotski.mainScreen); // Navigate back to the main screen
+        klotski.dynamicBoard.triggerAnimateFocalLengthRevert();
+    }
 }

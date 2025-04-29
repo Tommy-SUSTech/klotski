@@ -148,6 +148,7 @@ public class MainScreen implements Screen {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 klotski.setScreen(new GameModeScreen(klotski)); // Navigate to the GameModeScreen
+                klotski.dynamicBoard.triggerAnimateFocalLength(10000.0f, 1.0f);
             }
         });
         table.add(playButton).width(200).height(50).padBottom(20).row();
