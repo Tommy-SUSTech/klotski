@@ -1,4 +1,8 @@
 {
+offlineMode: {
+	class: java.lang.Boolean
+	value: true
+}
 musicEnabled: {
 	class: java.lang.Boolean
 	value: true

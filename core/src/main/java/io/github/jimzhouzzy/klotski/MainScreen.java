@@ -245,6 +245,10 @@ public class MainScreen implements Screen {
 
     @Override
     public void show() {
+        // We need to re-create the stage to ensure the dynamic components are updated
+        // e.g. the displayed username
+        dispose();
+        create();
         Gdx.input.setInputProcessor(stage);
     }
 

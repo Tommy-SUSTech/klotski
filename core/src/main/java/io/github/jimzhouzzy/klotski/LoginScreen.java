@@ -113,7 +113,15 @@ public class LoginScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
                 String username = usernameField.getText();
                 String password = passwordField.getText();
-                login(username, password); // Use the new login method
+                if (!klotski.isOfflineMode()) login(username, password);
+                else {
+                    if (authenticate(username, password)) {
+                        klotski.setLoggedInUser(username); // Set the logged-in user's name
+                        klotski.setScreen(klotski.mainScreen); // Navigate to the main screen
+                    } else {
+                        showErrorDialog("Invalid credentials");
+                    }
+                }
             }
         });
         table.add(loginButton).width(200).height(50).padBottom(20).row();
@@ -125,7 +133,14 @@ public class LoginScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
                 String username = usernameField.getText();
                 String password = passwordField.getText();
-                register(username, password);
+                if (!klotski.isOfflineMode()) register(username, password);
+                else {
+                    if (registerLocal(username, password)) {
+                        showErrorDialog("Registration successful! Please log in.");
+                    } else {
+                        showErrorDialog("Registration failed. Username already exists or invalid input.");
+                    }
+                }
             }
         });
         table.add(registerButton).width(200).height(50).padBottom(20).row();
@@ -274,6 +289,7 @@ public class LoginScreen implements Screen {
     }
 
     private void login(String username, String password) {
+        System.out.println("Attempting to log in with username: " + username + " and password: " + password);
         // Create HTTP request
         HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
         Net.HttpRequest request = requestBuilder

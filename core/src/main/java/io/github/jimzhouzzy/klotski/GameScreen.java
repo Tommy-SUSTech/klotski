@@ -169,10 +169,16 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                             handleRedo();
                             break;
                         case "Save":
-                            handleSave();
+                            if (!klotski.isOfflineMode())
+                                handleSave(false);
+                            else 
+                                handleLocalSave();
                             break;
                         case "Load":
-                            handleLoad();
+                            if (!klotski.isOfflineMode())
+                                handleLoad();
+                            else
+                                handleLocalLoad();
                             break;
                         case "Exit":
                             handleExit();
@@ -874,7 +880,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         return username + "_save.dat"; // Unique save file for each user
     }
 
-    private void handleSave() {
+    private void handleSave(boolean autoSave) {
         String saveFileName = getSaveFileName();
         File file = new File(Gdx.files.getLocalStoragePath(), saveFileName);
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
@@ -888,13 +894,13 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             System.out.println("Save file content: " + new String(Files.readAllBytes(file.toPath())));
 
             // Upload the save to the server
-            uploadSaveToServer(Files.readAllBytes(file.toPath()));
+            uploadSaveToServer(Files.readAllBytes(file.toPath()), autoSave);
         } catch (IOException e) {
             System.err.println("Failed to save game: " + e.getMessage());
         }
     }
 
-    private void uploadSaveToServer(byte[] saveData) {
+    private void uploadSaveToServer(byte[] saveData, boolean autoSave) {
         // print raw data length
         System.out.println("Raw save data length: " + saveData.length);
         // Convert to base 64
@@ -917,7 +923,9 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                 "username", username,
                 "date", date,
                 "hash", hash,
-                "saveData", encodedSaveData));
+                "saveData", encodedSaveData,
+                "autoSave", autoSave
+        ));
 
         // Send the HTTP POST request
         HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
@@ -1037,6 +1045,57 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             }
         });
     }
+    
+    private void handleLocalSave() {
+        // TODO: refactor to math the online method
+        String saveFileName = getSaveFileName();
+        File file = new File(Gdx.files.getLocalStoragePath(), saveFileName);
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+            // Save the positions of all pieces, move history, current move index, and
+            // elapsed time
+            oos.writeObject(new ArrayList<>(List.of(game.getPieces())));
+            oos.writeObject(moveHistory);
+            oos.writeInt(currentMoveIndex);
+            oos.writeFloat(elapsedTime);
+            System.out.println("Game saved successfully for user: " + klotski.getLoggedInUser());
+        } catch (IOException e) {
+            System.err.println("Failed to save game: " + e.getMessage());
+        }
+    }
+
+    private void handleLocalLoad() {
+        String saveFileName = getSaveFileName();
+        File file = new File(Gdx.files.getLocalStoragePath(), saveFileName);
+        if (!file.exists()) {
+            System.out.println("No save file found for user: " + klotski.getLoggedInUser());
+            return;
+        }
+
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            // Restart the game
+            handleRestart(game);
+
+            // Load the game state
+            List<KlotskiGame.KlotskiPiece> pieces = (List<KlotskiGame.KlotskiPiece>) ois.readObject();
+            moveHistory = (List<int[][]>) ois.readObject();
+            currentMoveIndex = ois.readInt();
+            elapsedTime = ois.readFloat();
+
+            // Update the game state
+            game.setPieces(pieces);
+            updateBlocksFromGame(game);
+            movesLabel.setText("Moves: " + (currentMoveIndex + 1));
+
+            // Update the timer label
+            int minutes = (int) (elapsedTime / 60);
+            int seconds = (int) (elapsedTime % 60);
+            timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+
+            System.out.println("Game loaded successfully for user: " + klotski.getLoggedInUser());
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Failed to load game: " + e.getMessage());
+        }
+    }
 
     public KlotskiGame getGame() {
         return game;
@@ -1070,7 +1129,10 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         autoSaveTask = Timer.schedule(new Timer.Task() {
             @Override
             public void run() {
-                handleSave(); // Call the save method
+                if (!klotski.isOfflineMode())
+                    handleSave(true); // Call the save method
+                else
+                    handleLocalSave();
                 System.out.println("Game auto-saved.");
             }
         }, 30, 30); // Delay of 30 seconds, repeat every 30 seconds

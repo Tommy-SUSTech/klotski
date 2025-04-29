@@ -153,6 +153,24 @@ public class SettingsScreen implements Screen {
         });
         table.add(musicCheckBox).padBottom(20).row();
 
+        // Add a checkbox for music 
+        CheckBox offlineModeCheckBox = new CheckBox("Network - Offline Mode", skin);
+        offlineModeCheckBox.setChecked(klotski.isOfflineMode());
+        offlineModeCheckBox.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                klotski.clearLoginStatus();
+                if (offlineModeCheckBox.isChecked()) {
+                    klotski.setOfflineMode(true);
+                } else {
+                    klotski.setOfflineMode(false);
+                }
+                Gdx.app.log("Settings", "Music " + (musicCheckBox.isChecked() ? "enabled" : "disabled"));
+                saveSettings();
+            }
+        });
+        table.add(offlineModeCheckBox).padBottom(20).row();
+
         // Add a "Back" button
         TextButton backButton = new TextButton("Back", skin);
         backButton.addListener(new ClickListener() {
@@ -172,6 +190,7 @@ public class SettingsScreen implements Screen {
         settings.put("antialiasingEnabled", klotski.isAntialiasingEnabled());
         settings.put("vsyncEnabled", klotski.isVsyncEnabled());
         settings.put("musicEnabled", klotski.isMusicEnabled());
+        settings.put("offlineMode", klotski.isOfflineMode());
 
         String username = klotski.getLoggedInUser();
         if (username == null || username.isEmpty()) {
@@ -194,6 +213,8 @@ public class SettingsScreen implements Screen {
         defaultSettings.put("username", "Guest"); // Default username
         defaultSettings.put("antialiasingEnabled", true);
         defaultSettings.put("vsyncEnabled", true);
+        defaultSettings.put("musicEnabled", true);
+        defaultSettings.put("offlineMode", false);
         return defaultSettings;
     }
 
@@ -231,6 +252,7 @@ public class SettingsScreen implements Screen {
             klotski.setAntialiasingEnabled((boolean) settings.getOrDefault("antialiasingEnabled", true), stage);
             klotski.setVsyncEnabled((boolean) settings.getOrDefault("vsyncEnabled", true), stage);
             klotski.setMusicEnabled((boolean) settings.getOrDefault("musicEnabled", true));
+            klotski.setOfflineMode((boolean) settings.getOrDefault("offlineMode", false));
             Gdx.app.log("Settings", "Settings loaded for user: " + username);
         } else {
             Gdx.app.log("Settings", "No settings found for user: " + username + ". Using default settings.");
@@ -239,6 +261,7 @@ public class SettingsScreen implements Screen {
             klotski.setAntialiasingEnabled((boolean) settings.get("antialiasingEnabled"), stage);
             klotski.setVsyncEnabled((boolean) settings.get("vsyncEnabled"), stage);
             klotski.setMusicEnabled((boolean) settings.getOrDefault("musicEnabled", true));
+            klotski.setOfflineMode((boolean) settings.getOrDefault("offlineMode", false));
             saveSettings();
         }
 
@@ -264,6 +287,9 @@ public class SettingsScreen implements Screen {
                 return false;
             }
             if (!settings.containsKey("musicEnabled") || !(settings.get("vsyncEnabled") instanceof Boolean)) {
+                return false;
+            }
+            if (!settings.containsKey("offlineMode") || !(settings.get("vsyncEnabled") instanceof Boolean)) {
                 return false;
             }
             if (!settings.containsKey("username") || !(settings.get("username") instanceof String)) {

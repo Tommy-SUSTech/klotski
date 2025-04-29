@@ -54,6 +54,7 @@ public class Klotski extends Game {
     private Lwjgl3ApplicationConfiguration lwjgl3Config;
     private Skin skin;
     private boolean musicEnabled;
+    private boolean isOfflineMode;
 
     public void create() {
         // Load the music file
@@ -139,13 +140,21 @@ public class Klotski extends Game {
         }
     }
 
-    private void saveLoginStatus() {
+    public void saveLoginStatus() {
         File file = new File(Gdx.files.getLocalStoragePath(), LOGIN_STATUS_FILE);
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write(loggedInUser != null ? loggedInUser : ""); // Save the username or an empty string
         } catch (IOException e) {
             System.err.println("Failed to save login status: " + e.getMessage());
+        }
+    }
+
+    public void clearLoginStatus() {
+        loggedInUser = null;
+        File file = new File(Gdx.files.getLocalStoragePath(), LOGIN_STATUS_FILE);
+        if (file.exists()) {
+            file.delete(); // Delete the login status file
         }
     }
 
@@ -388,5 +397,13 @@ public class Klotski extends Game {
 
     public boolean isMusicEnabled() {
         return musicEnabled;
+    }
+
+    public void setOfflineMode(boolean offlineMode) {
+        this.isOfflineMode = offlineMode;
+    }
+
+    public boolean isOfflineMode() {
+        return isOfflineMode;
     }
 }
