@@ -3,11 +3,11 @@ name: Build and Publish
 on:
   push:
     tags:
-      - "v*"
-  workflow_dispatch:
+      - "v*"             # Automatically triggered on version tag pushes
+  workflow_dispatch:      # Allow manual trigger too
 
 permissions:
-  contents: write  # Required to create releases
+  contents: write         # Required for release creation and uploads
 
 jobs:
   bundle:
@@ -52,19 +52,20 @@ jobs:
   release:
     needs: bundle
     runs-on: ubuntu-latest
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: all-artifacts
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
+          release_name: Klotski ${{ github.ref_name }}
           draft: false
           prerelease: false
 
@@ -72,6 +73,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          name: Klotski
+          name: Klotski ${{ github.ref_name }}
           files: |
             all-artifacts/**/*
