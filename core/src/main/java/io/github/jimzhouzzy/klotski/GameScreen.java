@@ -62,7 +62,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 public class GameScreen extends ApplicationAdapter implements Screen {
-    private static final String SAVE_FILE = "game_save.dat";
+    private final ConfigPathHelper configPathHelper = new ConfigPathHelper();
+    private final String SAVE_FILE = configPathHelper.getConfigFilePath("Klotski", "game_save.dat");
 
     private Stage stage;
     private Skin skin;

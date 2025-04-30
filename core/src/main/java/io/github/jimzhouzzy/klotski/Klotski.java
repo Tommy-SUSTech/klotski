@@ -39,7 +39,8 @@ public class Klotski extends Game {
     private GameWebSocketServer webSocketServer;
     private GameWebSocketClient webSocketClient;
 
-    private static final String LOGIN_STATUS_FILE = "login_status.dat"; // File to store login status
+    private final ConfigPathHelper configPathHelper = new ConfigPathHelper();
+    private final String LOGIN_STATUS_FILE = configPathHelper.getConfigFilePath("Klotski", "login_status.dat");
     public SpriteBatch batch;
     public BitmapFont font;
     public FitViewport viewport;
@@ -155,7 +156,7 @@ public class Klotski extends Game {
     }
 
     private void loadLoginStatus() {
-        File file = new File(Gdx.files.getLocalStoragePath(), LOGIN_STATUS_FILE);
+        File file = new File(LOGIN_STATUS_FILE);
         if (!file.exists()) {
             return; // No login status file exists yet
         }
@@ -168,7 +169,7 @@ public class Klotski extends Game {
     }
 
     public void saveLoginStatus() {
-        File file = new File(Gdx.files.getLocalStoragePath(), LOGIN_STATUS_FILE);
+        File file = new File(LOGIN_STATUS_FILE);
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write(loggedInUser != null ? loggedInUser : ""); // Save the username or an empty string
@@ -179,7 +180,7 @@ public class Klotski extends Game {
 
     public void clearLoginStatus() {
         loggedInUser = null;
-        File file = new File(Gdx.files.getLocalStoragePath(), LOGIN_STATUS_FILE);
+        File file = new File(LOGIN_STATUS_FILE);
         if (file.exists()) {
             file.delete(); // Delete the login status file
         }

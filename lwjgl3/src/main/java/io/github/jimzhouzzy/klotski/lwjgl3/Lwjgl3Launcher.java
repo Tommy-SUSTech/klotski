@@ -12,6 +12,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+
+import io.github.jimzhouzzy.klotski.ConfigPathHelper;
 import io.github.jimzhouzzy.klotski.Klotski;
 
 /** Launches the desktop (LWJGL3) application. */
@@ -77,12 +79,12 @@ public class Lwjgl3Launcher {
     private static boolean[] loadConfiguration() {
         // TODO: Add frame rate option
 
-        final String SETTINGS_FILE = "settings.json";
+        final ConfigPathHelper configPathHelper = new ConfigPathHelper();
+        final String SETTINGS_FILE = configPathHelper.getConfigFilePath("Klotski", "settings.json");
         File file = new File(SETTINGS_FILE);
         Map<String, Object> settings;
 
         if (!file.exists()) {
-            Gdx.app.log("Settings", "No settings file found. Using default settings.");
             settings = getDefaultSettings();
         } else {
             try (FileReader reader = new FileReader(file)) {

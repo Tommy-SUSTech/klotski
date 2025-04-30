@@ -24,7 +24,8 @@ public class SettingsScreen implements Screen {
     private Stage stage;
     private Skin skin;
     private boolean isDarkMode = false; // Default to light mode
-    private static final String SETTINGS_FILE = "settings.json";
+    private final ConfigPathHelper configPathHelper = new ConfigPathHelper();
+    private final String SETTINGS_FILE = configPathHelper.getConfigFilePath("Klotski", "settings.json");
 
     public SettingsScreen(final Klotski klotski) {
         this.klotski = klotski;

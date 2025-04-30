@@ -32,7 +32,8 @@ import java.util.Map;
 
 public class LoginScreen implements Screen {
 
-    private static final String USER_DATA_FILE = "users.dat"; // File to store user data
+    private final ConfigPathHelper configPathHelper = new ConfigPathHelper();
+    private final String USER_DATA_FILE = configPathHelper.getConfigFilePath("Klotski", "users.dat");
     private final Klotski klotski;
     private final Stage stage;
     private final Skin skin;
@@ -213,7 +214,7 @@ public class LoginScreen implements Screen {
     }
 
     private void loadUserData() {
-        File file = new File(Gdx.files.getLocalStoragePath(), USER_DATA_FILE);
+        File file = new File(USER_DATA_FILE);
         if (!file.exists()) {
             return; // No user data file exists yet
         }
@@ -232,7 +233,7 @@ public class LoginScreen implements Screen {
     }
 
     private void saveUserData() {
-        File file = new File(Gdx.files.getLocalStoragePath(), USER_DATA_FILE);
+        File file = new File(USER_DATA_FILE);
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             for (Map.Entry<String, String> entry : userDatabase.entrySet()) {
