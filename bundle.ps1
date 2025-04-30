@@ -37,7 +37,7 @@ $jpackageArgs = @(
 )
 
 # None null check for icon
-if ($null -ne $IconPath -and $IconPath -ne "" -and Test-Path $IconPath) {
+if ($null -ne $IconPath -and $IconPath -ne "" -and (Test-Path $IconPath)) {
     $jpackageArgs += "--icon", $IconPath
 }
 
