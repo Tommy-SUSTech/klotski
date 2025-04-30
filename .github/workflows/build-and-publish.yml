@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"             # Automatically triggered on version tag pushes
+    branches:
+      - "v*"             # Automatically triggered on version branches pushes
   workflow_dispatch:      # Allow manual trigger too
 
 permissions:
