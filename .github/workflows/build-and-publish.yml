@@ -65,7 +65,10 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Klotski ${{ github.ref_name }}
           files: |
-            all-artifacts/**/*
+            all-artifacts/**/Klotski-*.exe
+            all-artifacts/**/Klotski-*.jar
+            all-artifacts/**/Klotski-*.pkg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
+
