@@ -59,7 +59,7 @@ jobs:
         with:
           path: all-artifacts
 
-      - name: Create GitHub Release and Upload Assets
+      - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
@@ -68,3 +68,4 @@ jobs:
             all-artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
