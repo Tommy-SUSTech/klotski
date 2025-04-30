@@ -4,6 +4,9 @@ assets/*.dat
 ## .jar files
 lwjgl3/build/libs/*.jar
 
+## bundles
+bundled/*
+
 ## Gradle:
 .gradle/
 gradle-app.setting
