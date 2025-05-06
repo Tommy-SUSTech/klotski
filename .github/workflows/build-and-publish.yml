@@ -37,7 +37,7 @@ jobs:
       - name: Run bundling script (macOS/Linux)
         if: runner.os != 'Windows'
         run: |
-          chmod +x ./bundle.sh
+          chmod +x ./bundle_linux.sh
           ./bundle.sh
 
       - name: Run bundling script (Windows)
