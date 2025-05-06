@@ -336,6 +336,11 @@ public class LoginScreen implements Screen {
     }
 
     private void login(String username, String password) {
+        if (!basicValidation(username, password)) {
+            showErrorDialog("Invalid username or password");
+            return;
+        }
+
         System.out.println("Attempting to log in with username: " + username + " and password: " + password);
         // Create HTTP request
         HttpRequestBuilder requestBuilder = new HttpRequestBuilder();
@@ -377,6 +382,11 @@ public class LoginScreen implements Screen {
     
     private void register(String username, String password) {
         try {
+            if (!basicValidation(username, password)) {
+                showErrorDialog("Invalid username or password");
+                return;
+            }
+
             // Encode parameters
             String content = "username=" + URLEncoder.encode(username, "UTF-8") +
                     "&password=" + URLEncoder.encode(password, "UTF-8");
