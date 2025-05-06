@@ -202,7 +202,7 @@ public class SettingsScreen implements Screen {
         settings.put("username", username);
 
         Json json = new Json();
-        FileHandle file = Gdx.files.local(SETTINGS_FILE);
+        FileHandle file = Gdx.files.absolute(SETTINGS_FILE);
         file.writeString(json.prettyPrint(settings), false);
 
         Gdx.app.log("Settings", "Settings saved for user: " + username);
@@ -221,7 +221,7 @@ public class SettingsScreen implements Screen {
 
     private void loadSettings() {
         // Load settings from a JSON file
-        FileHandle file = Gdx.files.local(SETTINGS_FILE);
+        FileHandle file = Gdx.files.absolute(SETTINGS_FILE);
         Map<String, Object> settings;
 
         if (!file.exists()) {

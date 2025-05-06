@@ -79,6 +79,17 @@ public class LoginScreen implements Screen {
                 clickedPixmap.dispose();
                 Gdx.graphics.setCursor(clickedCursor);
             }
+
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                switch (keycode) {
+                    case com.badlogic.gdx.Input.Keys.ESCAPE:
+                        klotski.setScreen(new MainScreen(klotski)); // Navigate back to the main screen
+                        return true;
+                    default:
+                        return false;
+                }
+            }
         });
 
         // Load the skin for UI components
