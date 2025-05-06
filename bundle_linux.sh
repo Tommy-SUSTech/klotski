@@ -49,7 +49,6 @@ COMMON_OPTS=(
   --dest "$OUTPUT_DIR"
   --app-version "1.0.0"
   --vendor "JimZhouZZY"
-  --java-options -XstartOnFirstThread
   --linux-shortcut
 )
 

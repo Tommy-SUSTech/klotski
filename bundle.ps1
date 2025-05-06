@@ -33,7 +33,6 @@ $jpackageArgs = @(
     "--dest", $OutputDir
     "--app-version", "1.0.0"
     "--vendor", "JimZhouZZY"
-    "--java-options", "-XstartOnFirstThread"
     "--win-shortcut"
 )
 
