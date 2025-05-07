@@ -2,6 +2,7 @@ package io.github.jimzhouzzy.klotski;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -90,6 +91,7 @@ public class SpectateChoiceScreen implements Screen {
             userButton.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
+                    klotski.playClickSound();;
                     spectateUser(user);
                 }
             });
@@ -102,6 +104,7 @@ public class SpectateChoiceScreen implements Screen {
         backButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setScreen(new GameModeScreen(klotski)); // Navigate to the GameModeScreen
                 klotski.dynamicBoard.triggerAnimateFocalLength(10000.0f, 1.0f);
             }
@@ -114,7 +117,11 @@ public class SpectateChoiceScreen implements Screen {
         klotski.setScreen(new SpectateScreen(klotski, user)); // Navigate to the SpectateScreen
     }
 
-    private void showErrorDialog(String message, boolean exitOnClose) {
+    // TODO: avoid repeated code.
+    private void showErrorDialog(String message, boolean existOnClose) {
+        // Play alert sound
+        klotski.playAlertSound();
+
         // Create a group to act as the dialog container
         Group dialogGroup = new Group();
 
@@ -150,6 +157,7 @@ public class SpectateChoiceScreen implements Screen {
         okButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 dialogGroup.remove(); // Remove the dialog when OK is clicked
                 klotski.setScreen(new GameModeScreen(klotski)); // Navigate to the GameModeScreen
                 klotski.dynamicBoard.triggerAnimateFocalLength(10000.0f, 1.0f);

@@ -147,6 +147,7 @@ public class MainScreen implements Screen {
         playButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setScreen(new GameModeScreen(klotski)); // Navigate to the GameModeScreen
                 klotski.dynamicBoard.triggerAnimateFocalLength(10000.0f, 1.0f);
             }
@@ -158,6 +159,7 @@ public class MainScreen implements Screen {
         loginButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setScreen(new LoginScreen(klotski)); // Navigate to the LoginScreen
             }
         });
@@ -168,6 +170,7 @@ public class MainScreen implements Screen {
         settingsButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setScreen(klotski.settingsScreen); // Navigate to the SettingsScreen
             }
         });
@@ -178,6 +181,7 @@ public class MainScreen implements Screen {
         exitButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 Gdx.app.exit(); // Exit the application
             }
         });

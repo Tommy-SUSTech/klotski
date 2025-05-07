@@ -92,6 +92,7 @@ public class SettingsScreen implements Screen {
         darkModeCheckBox.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 if (darkModeCheckBox.isChecked()) {
                     isDarkMode = true;
                     klotski.klotskiTheme = KlotskiTheme.DARK;
@@ -115,6 +116,7 @@ public class SettingsScreen implements Screen {
         antialiasingCheckBox.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setAntialiasingEnabled(antialiasingCheckBox.isChecked(), stage);
                 Gdx.app.log("Settings", "Antialiasing " + (antialiasingCheckBox.isChecked() ? "enabled" : "disabled"));
                 saveSettings();
@@ -128,6 +130,7 @@ public class SettingsScreen implements Screen {
         vsyncCheckBox.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setVsyncEnabled(vsyncCheckBox.isChecked(), stage);
                 // Is this line necessary?
                 Gdx.graphics.setVSync(vsyncCheckBox.isChecked());
@@ -143,6 +146,7 @@ public class SettingsScreen implements Screen {
         musicCheckBox.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 if (musicCheckBox.isChecked()) {
                     klotski.setMusicEnabled(true);
                 } else {
@@ -160,6 +164,7 @@ public class SettingsScreen implements Screen {
         offlineModeCheckBox.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.clearLoginStatus();
                 if (offlineModeCheckBox.isChecked()) {
                     klotski.setOfflineMode(true);
@@ -177,6 +182,7 @@ public class SettingsScreen implements Screen {
         backButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setScreen(new MainScreen(klotski)); // Navigate back to the main screen
                 saveSettings();
             }

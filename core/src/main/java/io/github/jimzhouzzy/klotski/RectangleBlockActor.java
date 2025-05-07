@@ -22,6 +22,8 @@ public class RectangleBlockActor extends Actor {
     private KlotskiGame game; // Reference to the game logic
     private float snappedX;
     private float snappedY;
+    private float oldVelocityX;
+    private float oldVelocityY;
 
     public RectangleBlockActor(float x, float y, float width, float height, Color color, int pieceId, KlotskiGame game) {
         this.rectangle = new Rectangle(x, y, width, height);
@@ -70,6 +72,9 @@ public class RectangleBlockActor extends Actor {
                 float newX = getX() + x - offsetX;
                 float newY = getY() + y - offsetY;
 
+                boolean collisionX = false;
+                boolean collisionY = false;
+
                 // Get the boundaries for this block
                 float[] boundaries = gameScreen.getBoundaryForBlock(RectangleBlockActor.this);
 
@@ -77,26 +82,34 @@ public class RectangleBlockActor extends Actor {
                 if (newX == boundaries[0] && newY == boundaries[2]) { // At (minX, minY)
                     if (boundaries[0] + getWidth() <= boundaries[1]) {
                         newX += 1; // Move slightly right if within maxX
+                        collisionX = true;
                     } else if (boundaries[2] + getHeight() <= boundaries[3]) {
                         newY += 1; // Move slightly up if within maxY
+                        collisionY = true;
                     }
                 } else if (newX == boundaries[0] && newY + getHeight() == boundaries[3]) { // At (minX, maxY)
                     if (boundaries[0] + getWidth() <= boundaries[1]) {
                         newX += 1; // Move slightly right if within maxX
+                        collisionX = true;
                     } else if (boundaries[2] <= boundaries[3] - getHeight()) {
                         newY -= 1; // Move slightly down if within minY
+                        collisionY = true;
                     }
                 } else if (newX + getWidth() == boundaries[1] && newY == boundaries[2]) { // At (maxX, minY)
                     if (boundaries[0] <= boundaries[1] - getWidth()) {
                         newX -= 1; // Move slightly left if within minX
+                        collisionX = true;
                     } else if (boundaries[2] + getHeight() <= boundaries[3]) {
                         newY += 1; // Move slightly up if within maxY
+                        collisionY = true;
                     }
                 } else if (newX + getWidth() == boundaries[1] && newY + getHeight() == boundaries[3]) { // At (maxX, maxY)
                     if (boundaries[0] <= boundaries[1] - getWidth()) {
                         newX -= 1; // Move slightly left if within minX
+                        collisionX = true;
                     } else if (boundaries[2] <= boundaries[3] - getHeight()) {
                         newY -= 1; // Move slightly down if within minY
+                        collisionY = true;
                     }
                 }
                 float minX = boundaries[0];
@@ -113,6 +126,24 @@ public class RectangleBlockActor extends Actor {
                     newY = oldY; // Keep the old Y position
                     newX = oldX; // Keep the old X position
                 }
+
+                float velocityX = newX - oldX;
+                float velocityY = newY - oldY;
+                float accelerationX = velocityX - oldVelocityX;
+                float accelerationY = velocityY - oldVelocityY;
+               
+                oldVelocityX = velocityX;
+                oldVelocityY = velocityY;
+
+                // TODO: find a better way to detect collision
+                /*
+                if (
+                    (velocityX / (float) Math.abs(velocityX) * accelerationX < -1.0f && collisionX) 
+                        || (velocityY / (float) Math.abs(velocityY) * accelerationY < -1.0f && collisionY)
+                    ) {
+                    klotski.playBlockCollideSound();
+                }
+                */
 
                 setPosition(newX, newY);
                 rectangle.setPosition(newX, newY);

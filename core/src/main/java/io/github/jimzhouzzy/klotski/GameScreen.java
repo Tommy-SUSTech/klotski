@@ -153,6 +153,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             button.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
+                    klotski.playClickSound();;
                     switch (name) {
                         case "Restart":
                             handleRestart(game);
@@ -765,6 +766,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         restartButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 handleRestart(game); // Restart the game
                 congratulationsGroup.setVisible(false); // Hide the congratulations screen
             }
@@ -776,6 +778,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
         exitButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 handleExit(); // Exit the game
             }
         });

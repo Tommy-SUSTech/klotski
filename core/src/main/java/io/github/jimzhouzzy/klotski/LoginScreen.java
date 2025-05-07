@@ -2,6 +2,7 @@ package io.github.jimzhouzzy.klotski;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -131,6 +132,7 @@ public class LoginScreen implements Screen {
         loginButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 loginRouter();
             }
         });
@@ -141,6 +143,7 @@ public class LoginScreen implements Screen {
         registerButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 String username = usernameField.getText();
                 String password = passwordField.getText();
                 if (!klotski.isOfflineMode()) register(username, password);
@@ -160,6 +163,7 @@ public class LoginScreen implements Screen {
         backButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 klotski.setScreen(new MainScreen(klotski)); // Navigate back to the main screen
             }
         });
@@ -269,7 +273,11 @@ public class LoginScreen implements Screen {
         }
     }
 
+    // TODO: avoid repeated code.
     private void showErrorDialog(String message) {
+        // Play alert sound
+        klotski.playAlertSound();
+
         // Create a group to act as the dialog container
         Group dialogGroup = new Group();
 
@@ -305,6 +313,7 @@ public class LoginScreen implements Screen {
         okButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 dialogGroup.remove(); // Remove the dialog when OK is clicked
             }
         });
@@ -315,6 +324,9 @@ public class LoginScreen implements Screen {
     }
     
     private void showDialog(String title, String message) {
+        // Play alert sound
+        klotski.playAlertSound();
+
         // Create a group to act as the dialog container
         Group dialogGroup = new Group();
 
@@ -350,6 +362,7 @@ public class LoginScreen implements Screen {
         okButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                klotski.playClickSound();;
                 dialogGroup.remove(); // Remove the dialog when OK is clicked
             }
         });

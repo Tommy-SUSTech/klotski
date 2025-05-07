@@ -18,6 +18,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 
 import io.github.jimzhouzzy.klotski.GameWebSocketServer;
 
@@ -63,6 +64,11 @@ public class Klotski extends Game {
     private boolean musicEnabled;
     private boolean isOfflineMode;
     private String token;
+
+    // Should be final
+    private Sound alertSound;
+    private Sound clickSound;
+    private Sound blockCollideSound;
 
     public void create() {
         // Load the music file
@@ -145,6 +151,12 @@ public class Klotski extends Game {
         resizedPixmap.dispose();
         originalPixmap.dispose();
         Gdx.graphics.setCursor(cursor);
+
+        // Preload sound effects, should be treated like final
+        // this WAV version is not working, idky
+        alertSound = Gdx.audio.newSound(Gdx.files.internal("assets/sound_fx/ui_alert.ogg"));
+        clickSound = Gdx.audio.newSound(Gdx.files.internal("assets/sound_fx/ui_click.ogg"));
+        blockCollideSound = Gdx.audio.newSound(Gdx.files.internal("assets/sound_fx/block_collide.ogg"));
     }
 
     public String getLoggedInUser() {
@@ -457,7 +469,34 @@ public class Klotski extends Game {
         new Lwjgl3Application(newKlotski, config);
     }
 
+    public void playAlertSound() {
+        try {
+            alertSound.play();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void playClickSound() {
+        try {
+            clickSound.play();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void playBlockCollideSound() {
+        try {
+            blockCollideSound.play();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void showErrorDialog(String message, Stage stage) {
+        // Play alert sound
+        playAlertSound();
+
         // Create a group to act as the dialog container
         Group dialogGroup = new Group();
 
@@ -490,6 +529,7 @@ public class Klotski extends Game {
         okButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                playClickSound();;
                 dialogGroup.remove(); // Remove the dialog when OK is clicked
             }
         });
