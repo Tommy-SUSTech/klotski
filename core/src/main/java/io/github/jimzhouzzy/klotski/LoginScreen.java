@@ -26,9 +26,11 @@ import com.badlogic.gdx.net.HttpRequestBuilder;
 import com.badlogic.gdx.Net.HttpResponseListener;
 
 import java.io.*;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class LoginScreen implements Screen {
 
@@ -38,6 +40,8 @@ public class LoginScreen implements Screen {
     private final Stage stage;
     private final Skin skin;
     private final Map<String, String> userDatabase = new HashMap<>();
+    private TextField usernameField;
+    private TextField passwordField;
 
     public LoginScreen(final Klotski klotski) {
         this.klotski = klotski;
@@ -86,6 +90,9 @@ public class LoginScreen implements Screen {
                     case com.badlogic.gdx.Input.Keys.ESCAPE:
                         klotski.setScreen(new MainScreen(klotski)); // Navigate back to the main screen
                         return true;
+                    case com.badlogic.gdx.Input.Keys.ENTER:
+                        loginRouter();
+                        return true;
                     default:
                         return false;
                 }
@@ -109,11 +116,11 @@ public class LoginScreen implements Screen {
         table.add(titleLabel).padBottom(50).row();
 
         // Add username and password fields
-        TextField usernameField = new TextField("", skin);
+        usernameField = new TextField("", skin);
         usernameField.setMessageText("Username");
         table.add(usernameField).width(300).padBottom(20).row();
 
-        TextField passwordField = new TextField("", skin);
+        passwordField = new TextField("", skin);
         passwordField.setMessageText("Password");
         passwordField.setPasswordMode(true);
         passwordField.setPasswordCharacter('*');
@@ -124,17 +131,7 @@ public class LoginScreen implements Screen {
         loginButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                String username = usernameField.getText();
-                String password = passwordField.getText();
-                if (!klotski.isOfflineMode()) login(username, password);
-                else {
-                    if (authenticate(username, password)) {
-                        klotski.setLoggedInUser(username); // Set the logged-in user's name
-                        klotski.setScreen(klotski.mainScreen); // Navigate to the main screen
-                    } else {
-                        showErrorDialog("Invalid credentials");
-                    }
-                }
+                loginRouter();
             }
         });
         table.add(loginButton).width(200).height(50).padBottom(20).row();
@@ -169,6 +166,22 @@ public class LoginScreen implements Screen {
         table.add(backButton).width(200).height(50);
     }
 
+    private void loginRouter() {
+        String username = usernameField.getText();
+        String password = passwordField.getText();
+        if (!klotski.isOfflineMode()) {
+            login(username, password);
+        }
+        else {
+            if (authenticate(username, password)) {
+                klotski.setLoggedInUser(username); // Set the logged-in user's name
+                klotski.setScreen(klotski.mainScreen); // Navigate to the main screen
+            } else {
+                showErrorDialog("Invalid credentials");
+            }
+        }
+    }
+    
     private boolean authenticate(String username, String password) {
         // Do basic validation
         if (!basicValidation(username, password)) {
@@ -368,10 +381,20 @@ public class LoginScreen implements Screen {
             public void handleHttpResponse(Net.HttpResponse httpResponse) {
                 String response = httpResponse.getResultAsString();
                 Gdx.app.postRunnable(() -> {
-                    if ("success".equals(response)) {
-                        klotski.setLoggedInUser(username); // Set the logged-in user's name
+                    if (response.startsWith("success")) {
+                        String[] parts = response.split(":");
+                        String token = null;
+                        if (parts.length > 1) {
+                            token = parts[1];
+                        }
+                        System.out.println("Got Token: " + token);
+                        klotski.setLoggedInUser(username, token); // Set the logged-in user's name
                         klotski.setScreen(klotski.mainScreen); // Navigate to the main screen
-                    } else if ("failure".equals(response)) {
+
+                        // Start WebSocket client
+                        klotski.webSocketClient.send("login:" + username);
+                        System.out.println("WebSocket client started for user: " + username);
+                    } else if (response.startsWith("failure")) {
                         showErrorDialog("Invalid credentials");
                     } else {
                         showErrorDialog("Failed to connect to the server");
@@ -479,4 +502,6 @@ public class LoginScreen implements Screen {
     public void show() {
         Gdx.input.setInputProcessor(stage);
     }
+
+
 }

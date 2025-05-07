@@ -3,16 +3,20 @@ package io.github.jimzhouzzy.klotski;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
+import com.badlogic.gdx.Gdx;
+
 import java.net.URI;
 
 public class GameWebSocketClient extends WebSocketClient {
-    private static final int MAX_RETRIES = 5; // Maximum number of reconnection attempts
-    private static final int RECONNECT_DELAY = 5000; // Delay between reconnection attempts (in milliseconds)
+    private static final int MAX_RETRIES = 999999; // Maximum number of reconnection attempts
+    private static final int RECONNECT_DELAY = 3000; // Delay between reconnection attempts (in milliseconds)
 
     private int retryCount = 0; // Current retry attempt
     private boolean isReconnecting = false; // Flag to prevent overlapping reconnections
     public boolean closeSocket = false; // Flag to indicate if the socket should be closed
     private Klotski klotski;
+
+    public String[] onlineUsers = new String[0];
 
     public GameWebSocketClient(Klotski klotski, URI serverUri) {
         super(serverUri);
@@ -27,6 +31,16 @@ public class GameWebSocketClient extends WebSocketClient {
     @Override
     public void onMessage(String message) {
         System.out.println("Message from server: " + message);
+        
+        if (message.startsWith("Online users: ")) {
+            String[] users = message.substring("Online users: ".length()).split(", ");
+            onlineUsers = users;
+            System.out.println("Online users: " + String.join(", ", users));
+            
+            if (onMessageListener != null) {
+                onMessageListener.onMessage(message); // Trigger the callback
+            }
+        }
     }
 
     @Override
@@ -63,7 +77,7 @@ public class GameWebSocketClient extends WebSocketClient {
         new Thread(() -> {
             try {
                 Thread.sleep(RECONNECT_DELAY); // Wait before reconnecting
-                tryReconnect();
+                createNewClientAndReconnect();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 System.err.println("Reconnection interrupted.");
@@ -71,17 +85,38 @@ public class GameWebSocketClient extends WebSocketClient {
         }).start();
     }
 
-    private void tryReconnect() {
+    private void createNewClientAndReconnect() {
         try {
-            if (this.connectBlocking()) {
-                System.out.println("Reconnected to WebSocket server.");
-            } else {
-                System.err.println("Reconnection failed. Retrying...");
-                scheduleReconnect();
-            }
+            // Create a new instance of GameWebSocketClient
+            GameWebSocketClient newClient = new GameWebSocketClient(klotski, this.getURI());
+            newClient.connectBlocking(); // Attempt to connect
+            klotski.setGameWebSocketClient(newClient); // Update the reference in Klotski
+            System.out.println("Reconnected to WebSocket server.");
         } catch (Exception e) {
             System.err.println("Error during reconnection: " + e.getMessage());
-            scheduleReconnect();
+            scheduleReconnect(); // Retry if reconnection fails
+        } finally {
+            isReconnecting = false;
         }
+    }
+
+    public interface OnMessageListener {
+        void onMessage(String message);
+    }
+
+    private OnMessageListener onMessageListener;
+
+    public void setOnMessageListener(OnMessageListener listener) {
+        this.onMessageListener = listener;
+    }
+
+    public void receiveMessage(String message) {
+        if (onMessageListener != null) {
+            onMessageListener.onMessage(message);
+        }
+    }
+
+    public boolean isConnected() {
+        return this.isOpen();
     }
 }

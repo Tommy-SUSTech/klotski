@@ -132,6 +132,16 @@ public class GameModeScreen implements Screen {
             }
         });
         table.add(level2Button).width(300).height(50).padBottom(20).row();
+        
+        // Add "Spectate" button
+        TextButton spectateButton = new TextButton("Spectate", skin);
+        spectateButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                klotski.setScreen(new SpectateChoiceScreen(klotski, klotski.webSocketClient)); // Navigate to the game screen
+            }
+        });
+        table.add(spectateButton).width(300).height(50).padBottom(20).row();
 
         // Add "Back" button
         TextButton backButton = new TextButton("Back", skin);
