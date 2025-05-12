@@ -2,7 +2,6 @@ package io.github.jimzhouzzy.klotski;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.Group;
@@ -18,9 +17,6 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.audio.Music;
-import com.badlogic.gdx.audio.Sound;
-
-import io.github.jimzhouzzy.klotski.GameWebSocketServer;
 
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
@@ -28,9 +24,7 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowConfiguration;
 
 import java.io.*;
 import java.lang.reflect.Field;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
 enum KlotskiTheme {
@@ -40,7 +34,7 @@ enum KlotskiTheme {
 
 public class Klotski extends Game {
     private GameWebSocketServer webSocketServer;
-    public GameWebSocketClient webSocketClient;
+    private GameWebSocketClient webSocketClient;
 
     private final ConfigPathHelper configPathHelper = new ConfigPathHelper();
     private final String LOGIN_STATUS_FILE = configPathHelper.getConfigFilePath("Klotski", "login_status.dat");
@@ -49,7 +43,6 @@ public class Klotski extends Game {
     public FitViewport viewport;
     public GameScreen gameScreen;
     public MainScreen mainScreen;
-    public SpectateChoiceScreen spectateChoiceScreen;
     public DynamicBoard dynamicBoard;
     public WebServer webServer;
     public SettingsScreen settingsScreen;
@@ -63,24 +56,13 @@ public class Klotski extends Game {
     private Skin skin;
     private boolean musicEnabled;
     private boolean isOfflineMode;
-    private String token;
-
-    // Should be final
-    private Sound alertSound;
-    private Sound clickSound;
-    private Sound blockCollideSound;
 
     public void create() {
         // Load the music file
-        // MUST before load configurations
-        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/soundtrack.mp3"));
-        backgroundMusic.setLooping(true);
-        backgroundMusic.setVolume(1f);
-        backgroundMusic.play();
 
         // Load the skin for UI components
         skin = new Skin(Gdx.files.internal("skins/comic/skin/comic-ui.json"));
-        
+
         batch = new SpriteBatch();
         // use libGDX's default font
         font = new BitmapFont();
@@ -90,6 +72,37 @@ public class Klotski extends Game {
         // height to screen height
         font.setUseIntegerPositions(false);
         font.getData().setScale(viewport.getWorldHeight() / Gdx.graphics.getHeight());
+
+        // Load the last logged-in user
+        loadLoginStatus();
+
+        // Cresate dynamic board before screens
+        this.dynamicBoard = new DynamicBoard(this, null);
+
+        // After the user loading, settings screen must come first to load settings
+        this.settingsScreen = new SettingsScreen(this);
+        // MUST before load configurations
+        // 根据主题加载不同的音乐或设置参数
+        String musicPath = "assets/sound_fx/light_theme.mp3";
+        if (klotskiTheme == KlotskiTheme.DARK) {
+            musicPath = "assets/sound_fx/dark_theme.mp3"; // 可替换为 DARK 模式专属音乐
+        } else if (klotskiTheme == KlotskiTheme.LIGHT) {
+            musicPath = "assets/sound_fx/light_theme.mp3"; // 可替换为 LIGHT 模式专属音乐
+        }
+
+        // 加载并播放音乐
+        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal(musicPath));
+//        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/light_theme.mp3"));
+        backgroundMusic.setLooping(true);
+        backgroundMusic.setVolume(1f);
+        backgroundMusic.play();
+        this.mainScreen = new MainScreen(this);
+        this.gameScreen = new GameScreen(this);
+        this.setScreen(mainScreen);
+
+        // Start local web socket server
+        webSocketServer = new GameWebSocketServer(this, 8014);
+        webSocketServer.start();
 
         // Start online websocket client if not in offline mode
         if (!isOfflineMode()) {
@@ -115,22 +128,6 @@ public class Klotski extends Game {
             System.out.println("Offline mode enabled. Skipping WebSocket client initialization.");
         }
 
-        // Load the last logged-in user
-        loadLoginStatus();
-
-        // Cresate dynamic board before screens
-        this.dynamicBoard = new DynamicBoard(this, null);
-
-        // After the user loading, settings screen must come first to load settings
-        this.settingsScreen = new SettingsScreen(this);
-        this.mainScreen = new MainScreen(this);
-        this.gameScreen = new GameScreen(this);
-        this.setScreen(mainScreen);
-
-        // Start local web socket server
-        webSocketServer = new GameWebSocketServer(this, 8014);
-        webSocketServer.start();
-        
         // Start html web server
         try {
             webServer = new WebServer(8013);
@@ -151,12 +148,6 @@ public class Klotski extends Game {
         resizedPixmap.dispose();
         originalPixmap.dispose();
         Gdx.graphics.setCursor(cursor);
-
-        // Preload sound effects, should be treated like final
-        // this WAV version is not working, idky
-        alertSound = Gdx.audio.newSound(Gdx.files.internal("assets/sound_fx/ui_alert.ogg"));
-        clickSound = Gdx.audio.newSound(Gdx.files.internal("assets/sound_fx/ui_click.ogg"));
-        blockCollideSound = Gdx.audio.newSound(Gdx.files.internal("assets/sound_fx/block_collide.ogg"));
     }
 
     public String getLoggedInUser() {
@@ -164,12 +155,6 @@ public class Klotski extends Game {
             return "Guest"; // If no user is logged in, return "Guest"
         }
         return loggedInUser; // Return the logged-in user's name
-    }
-
-    public void setLoggedInUser(String username, String token) {
-        this.loggedInUser = username; // Set the logged-in user's name
-        this.token = token; // Set the token
-        saveLoginStatus(); // Save the login status whenever it changes
     }
 
     public void setLoggedInUser(String username) {
@@ -184,41 +169,7 @@ public class Klotski extends Game {
         }
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String prevLoggedInUser = reader.readLine(); // Read the logged-in username
-            String prevToken = reader.readLine(); // Read the token
-            URL url = new URL("http://42.194.132.147:8001/login");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-
-            // Request body
-            String requestBody = "token=" + prevToken;
-            try (OutputStream os = connection.getOutputStream()) {
-                os.write(requestBody.getBytes());
-                os.flush();
-            }
-
-            // Wait for response
-            int responseCode = connection.getResponseCode();
-            if (responseCode == 200) {
-                try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                    String response = in.readLine();
-                    if (response.startsWith("success:")) {
-                        System.out.println("Token is valid. User logged in automatically.");
-                        String token = response.split(":")[1];
-
-                        this.setLoggedInUser(prevLoggedInUser, token);
-                        
-                        // Start WebSocket client
-                        webSocketClient.send("login:" + prevLoggedInUser);
-                        System.out.println("WebSocket client started for user: " + prevLoggedInUser);
-                    } else {
-                        System.out.println("Token is invalid or expired. Please log in again.");
-                    }
-                }
-            } else {
-                System.out.println("Failed to connect to the server. Response code: " + responseCode);
-            }
+            loggedInUser = reader.readLine(); // Read the logged-in username
         } catch (IOException e) {
             System.err.println("Failed to load login status: " + e.getMessage());
         }
@@ -229,9 +180,6 @@ public class Klotski extends Game {
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write(loggedInUser != null ? loggedInUser : ""); // Save the username or an empty string
-            writer.newLine(); // Write a newline character
-            writer.write(token != null ? token : ""); // Save the token or an empty string
-            writer.flush(); // Ensure all data is written to the file
         } catch (IOException e) {
             System.err.println("Failed to save login status: " + e.getMessage());
         }
@@ -250,51 +198,23 @@ public class Klotski extends Game {
     }
 
     public void dispose() {
-        // Dispose of LibGDX resources
         batch.dispose();
         font.dispose();
-    
-        // Stop and close the WebSocket server
-        if (webSocketServer != null) {
-            try {
-                webSocketServer.stop(); // Gracefully stop the server
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            webSocketServer.close(); // Ensure the server is fully closed
-            webSocketServer = null; // Dereference for garbage collection
+        try {
+            webSocketServer.stop();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    
-        // Stop and close the WebSocket client
+        webSocketServer.close();
+        webServer.close();
         if (webSocketClient != null) {
-            try {
-                webSocketClient.closeSocket = true; // Ensure the client socket is marked for closure
-                webSocketClient.closeBlocking(); // Wait for the client to close
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            webSocketClient = null; // Dereference for garbage collection
+            webSocketClient.closeSocket = true;
+            webSocketClient.close();
         }
-    
-        // Stop and close the web server
-        if (webServer != null) {
-            try {
-                webServer.close(); // Gracefully stop the web server
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            webServer = null; // Dereference for garbage collection
-        }
-    
-        // Dispose of background music
         if (backgroundMusic != null) {
             backgroundMusic.dispose();
-            backgroundMusic = null; // Dereference for garbage collection
         }
-    
-        Gdx.app.exit();
         System.out.println("Klotski disposed");
-        System.exit(0);
     }
 
     public GameWebSocketServer getWebSocketServer() {
@@ -398,7 +318,7 @@ public class Klotski extends Game {
                 lwjgl3Config.setBackBufferConfig(8, 8, 8, 8, 16, 8, newSamples);
                 needRestart = true;
             }
-            
+
             if (needRestart) {
                 // restartApplication();
                 showErrorDialog("Some changes needs restarting the game to take effect", stage);
@@ -427,7 +347,7 @@ public class Klotski extends Game {
             Field depthField = Lwjgl3ApplicationConfiguration.class.getDeclaredField("depth");
             Field stencilField = Lwjgl3ApplicationConfiguration.class.getDeclaredField("stencil");
             Field samplesField = Lwjgl3ApplicationConfiguration.class.getDeclaredField("samples");
-    
+
             // Make the fields accessible
             rField.setAccessible(true);
             gField.setAccessible(true);
@@ -436,7 +356,7 @@ public class Klotski extends Game {
             depthField.setAccessible(true);
             stencilField.setAccessible(true);
             samplesField.setAccessible(true);
-    
+
             // Retrieve the values of the fields
             int r = rField.getInt(config);
             int g = gField.getInt(config);
@@ -445,7 +365,7 @@ public class Klotski extends Game {
             int depth = depthField.getInt(config);
             int stencil = stencilField.getInt(config);
             int samples = samplesField.getInt(config);
-    
+
             // Return the values as an array
             return new int[]{r, g, b, a, depth, stencil, samples};
         } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -469,34 +389,7 @@ public class Klotski extends Game {
         new Lwjgl3Application(newKlotski, config);
     }
 
-    public void playAlertSound() {
-        try {
-            alertSound.play();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void playClickSound() {
-        try {
-            clickSound.play();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void playBlockCollideSound() {
-        try {
-            blockCollideSound.play();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     private void showErrorDialog(String message, Stage stage) {
-        // Play alert sound
-        playAlertSound();
-
         // Create a group to act as the dialog container
         Group dialogGroup = new Group();
 
@@ -529,7 +422,6 @@ public class Klotski extends Game {
         okButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                playClickSound();;
                 dialogGroup.remove(); // Remove the dialog when OK is clicked
             }
         });
@@ -561,8 +453,12 @@ public class Klotski extends Game {
     public boolean isOfflineMode() {
         return isOfflineMode;
     }
-    
-    public void setGameWebSocketClient(GameWebSocketClient client) {
-        this.webSocketClient = client;
+
+    public void setBackgroundMusic(Music lightMusic) {
+        this.backgroundMusic = lightMusic;
+    }
+
+    public Music getBackgroundMusic() {
+        return backgroundMusic;
     }
 }

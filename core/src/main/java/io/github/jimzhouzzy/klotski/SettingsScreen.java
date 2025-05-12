@@ -2,6 +2,7 @@ package io.github.jimzhouzzy.klotski;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Cursor;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class SettingsScreen implements Screen {
 
     private final Klotski klotski;
+//    private Music backgroundMusic;
     private Stage stage;
     private Skin skin;
     private boolean isDarkMode = false; // Default to light mode
@@ -97,11 +99,33 @@ public class SettingsScreen implements Screen {
                     isDarkMode = true;
                     klotski.klotskiTheme = KlotskiTheme.DARK;
                     klotski.updateMainScreenColors();
+
+                    // 切换为暗黑主题音乐
+                    if (klotski.getBackgroundMusic() != null) {
+                        klotski.getBackgroundMusic().stop();
+                    }
+                    Music darkMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/dark_theme.mp3"));
+                    darkMusic.setLooping(true);
+                    klotski.getBackgroundMusic().setVolume(1f);
+                    darkMusic.play();
+                    klotski.setBackgroundMusic(darkMusic);
+
                     Gdx.app.log("Settings", "Dark mode enabled");
                 } else {
                     isDarkMode = false;
                     klotski.klotskiTheme = KlotskiTheme.LIGHT;
                     klotski.updateMainScreenColors();
+
+                    // 切换为亮色主题音乐
+                    if (klotski.getBackgroundMusic() != null) {
+                        klotski.getBackgroundMusic().stop();
+                    }
+                    Music lightMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/light_theme.mp3"));
+                    lightMusic.setLooping(true);
+                    klotski.getBackgroundMusic().setVolume(1f);
+                    lightMusic.play();
+                    klotski.setBackgroundMusic(lightMusic);
+
                     Gdx.app.log("Settings", "Light mode enabled");
                 }
                 saveSettings();
@@ -139,8 +163,8 @@ public class SettingsScreen implements Screen {
             }
         });
         table.add(vsyncCheckBox).padBottom(20).row();
-        
-        // Add a checkbox for music 
+
+        // Add a checkbox for music
         CheckBox musicCheckBox = new CheckBox("Audio - Music", skin);
         musicCheckBox.setChecked(klotski.isMusicEnabled());
         musicCheckBox.addListener(new ClickListener() {
@@ -158,7 +182,7 @@ public class SettingsScreen implements Screen {
         });
         table.add(musicCheckBox).padBottom(20).row();
 
-        // Add a checkbox for music 
+        // Add a checkbox for music
         CheckBox offlineModeCheckBox = new CheckBox("Network - Offline Mode", skin);
         offlineModeCheckBox.setChecked(klotski.isOfflineMode());
         offlineModeCheckBox.addListener(new ClickListener() {
