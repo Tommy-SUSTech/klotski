@@ -1,7 +1,7 @@
 {
 offlineMode: {
 	class: java.lang.Boolean
-	value: true
+	value: false
 }
 musicEnabled: {
 	class: java.lang.Boolean
@@ -16,6 +16,10 @@ vsyncEnabled: {
 	value: true
 }
 antialiasingEnabled: {
+	class: java.lang.Boolean
+	value: true
+}
+arrowControlsEnabled: {
 	class: java.lang.Boolean
 	value: true
 }

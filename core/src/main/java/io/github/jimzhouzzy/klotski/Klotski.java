@@ -46,7 +46,9 @@ public class Klotski extends Game {
     public DynamicBoard dynamicBoard;
     public WebServer webServer;
     public SettingsScreen settingsScreen;
+    public HelpScreen helpScreen;
     private Music backgroundMusic;
+    private boolean arrowControlsEnabled = true; // 默认显示方向控制按钮
 
     public KlotskiTheme klotskiTheme;
     private String loggedInUser; // Field to store the logged-in user's name
@@ -82,6 +84,7 @@ public class Klotski extends Game {
         // After the user loading, settings screen must come first to load settings
         this.settingsScreen = new SettingsScreen(this);
         // MUST before load configurations
+        this.helpScreen = new HelpScreen(this);
         // 根据主题加载不同的音乐或设置参数
         String musicPath = "assets/sound_fx/light_theme.mp3";
         if (klotskiTheme == KlotskiTheme.DARK) {
@@ -92,10 +95,10 @@ public class Klotski extends Game {
 
         // 加载并播放音乐
         backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal(musicPath));
-//        backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("assets/sound_fx/light_theme.mp3"));
         backgroundMusic.setLooping(true);
         backgroundMusic.setVolume(1f);
         backgroundMusic.play();
+
         this.mainScreen = new MainScreen(this);
         this.gameScreen = new GameScreen(this);
         this.setScreen(mainScreen);
@@ -461,4 +464,9 @@ public class Klotski extends Game {
     public Music getBackgroundMusic() {
         return backgroundMusic;
     }
+
+    public boolean isArrowControlsEnabled() { return arrowControlsEnabled; }
+
+    public void setArrowControlsEnabled(boolean enabled) { this.arrowControlsEnabled = enabled; }
+
 }

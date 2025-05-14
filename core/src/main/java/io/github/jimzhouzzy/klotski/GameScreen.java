@@ -1,5 +1,5 @@
 // KNOWN ISSUES:
-// 1. The move count is incorrect when the user dragged a piece 
+// 1. The move count is incorrect when the user dragged a piece
 //    across multiple grid.
 // 2. Restart in an leveled (seedly random shuffeled) game won't
 //    reset the game to the shuffeled state.
@@ -45,11 +45,8 @@ import io.github.jimzhouzzy.klotski.KlotskiGame.KlotskiPiece;
 import io.github.jimzhouzzy.klotski.KlotskiSolver;
 import io.github.jimzhouzzy.klotski.RectangleBlockActor;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.io.*;
 import java.nio.file.Files;
@@ -73,6 +70,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
     private final int cols = 4;
     private List<RectangleBlockActor> blocks; // List of all blocks
     private Group congratulationsGroup;
+    private RectangleBlockActor selectedBlock = null;
 
     private int[][] autoMoves;
     private int autoStep;
@@ -173,7 +171,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                         case "Save":
                             if (!klotski.isOfflineMode())
                                 handleSave(false);
-                            else 
+                            else
                                 handleLocalSave();
                             break;
                         case "Load":
@@ -190,6 +188,59 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             });
         }
 
+        if (klotski.isArrowControlsEnabled()) {
+            // Add arrow control buttons
+            Label controlLabel = new Label("Move", skin);
+            controlLabel.setFontScale(2f);
+            buttonTable.add(controlLabel).padTop(20).row();
+            Map<String, TextButton> directionButtons = new HashMap<>();
+//        Table arrowTable = new Table();
+            buttonNames = new String[]{"Up", "Down", "Left", "Right"};
+            for (String name : buttonNames) {
+
+                final String buttonName = name;
+                TextButton button = new TextButton(buttonName, skin);
+                directionButtons.put(buttonName, button);
+                button.getLabel().setFontScale(0.5f);
+                //buttonTable.add(button).height(30).width(100).pad(10);
+                //buttonTable.row();
+
+                button.addListener(new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        switch (buttonName) {
+                            case "Up":
+                                handleArrowKeys(new int[] { -1, 0 });
+                                break;
+                            case "Down":
+                                handleArrowKeys(new int[] { 1, 0 });
+                                break;
+                            case "Left":
+                                handleArrowKeys(new int[] { 0, -1 });
+                                break;
+                            case "Right":
+                                handleArrowKeys(new int[] { 0, 1 });
+                                break;
+                        }
+                    }
+                });
+            }
+
+            Table arrowTable = new Table();
+            arrowTable.add().width(30);
+            arrowTable.add(directionButtons.get("Up")).width(50).height(40);
+            arrowTable.add().width(30).row();
+
+            arrowTable.add(directionButtons.get("Left")).width(50).height(40);
+            arrowTable.add().width(10);
+            arrowTable.add(directionButtons.get("Right")).width(50).height(40).row();
+
+            arrowTable.add().width(30);
+            arrowTable.add(directionButtons.get("Down")).width(50).height(40);
+            arrowTable.add().width(30).row();
+
+            buttonTable.add(arrowTable).padTop(20).row();
+        }
         // Add grid and buttons to the root table
         rootTable.add(gridTable).expand().fill().left().padRight(20); // Grid on the left
         rootTable.add(buttonTable).top().right(); // Buttons on the right
@@ -208,6 +259,23 @@ public class GameScreen extends ApplicationAdapter implements Screen {
 
             blocks.add(block); // Add block to the list
             stage.addActor(block); // Add block to the stage
+
+            block.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    if (selectedBlock == block) {
+                        selectedBlock.setSelected(false);
+                        selectedBlock = null;
+                    } else {
+                        if (selectedBlock != null) {
+                            selectedBlock.setSelected(false);
+                        }
+                        selectedBlock = block;
+                        selectedBlock.setSelected(true); // Thicker border
+                    }
+                }
+            });
+
         }
 
         // Create the congratulations screen
@@ -296,6 +364,35 @@ public class GameScreen extends ApplicationAdapter implements Screen {
                         // Handle left arrow key for moving blocks
                         handleArrowKeys(new int[] { 1, 0 });
                         return true;
+                    // Handle number keys 0-9 for block selection
+                    case Input.Keys.NUM_0:
+                    case Input.Keys.NUM_1:
+                    case Input.Keys.NUM_2:
+                    case Input.Keys.NUM_3:
+                    case Input.Keys.NUM_4:
+                    case Input.Keys.NUM_5:
+                    case Input.Keys.NUM_6:
+                    case Input.Keys.NUM_7:
+                    case Input.Keys.NUM_8:
+                    case Input.Keys.NUM_9:
+                        int digit = keycode - Input.Keys.NUM_1; // digit = 0 ~ 8
+                        int targetId = digit + 1; // pieceId 从 1 开始到 9
+                        for (RectangleBlockActor block : blocks) {
+                            if (block.pieceId == targetId) {
+                                if (selectedBlock == block) {
+                                    block.setSelected(false);
+                                    selectedBlock = null;
+                                } else {
+                                    if (selectedBlock != null) {
+                                        selectedBlock.setSelected(false);
+                                    }
+                                    selectedBlock = block;
+                                    selectedBlock.setSelected(true);
+                                }
+                                break;
+                            }
+                        }
+                        return true;
                 }
                 return false;
             }
@@ -339,35 +436,26 @@ public class GameScreen extends ApplicationAdapter implements Screen {
     }
 
     private void handleArrowKeys(int[] direction) {
-        List<int[][]> legalMoves = game.getLegalMovesByDirection(direction);
-        if (legalMoves.isEmpty()) {
-            return;
-        }
-        if (isAutoSolving) {
-            stopAutoSolving();
-        }
-        int[][] move = legalMoves.get(0);
-        int fromRow = move[0][0];
-        int fromCol = move[0][1];
-        int toRow = move[1][0];
-        int toCol = move[1][1];
-        for (RectangleBlockActor block : blocks) {
-            KlotskiGame.KlotskiPiece piece = game.getPiece(block.pieceId);
-            if (piece.getRow() == fromRow && piece.getCol() == fromCol) {
-                float targetX = toCol * cellSize;
-                float targetY = (rows - toRow - piece.height) * cellSize; // Invert y-axis
-                game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                piece.setPosition(new int[] { toRow, toCol });
-                recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
-                isTerminal = game.isTerminal(); // Check if the game is in a terminal state
-                broadcastGameState();
-                block.addAction(Actions.sequence(
-                        Actions.moveTo(targetX, targetY, 0.1f), // Smooth animation
-                        Actions.run(() -> {
-                        })));
-                break;
-            }
-        }
+        if (selectedBlock == null) return;
+
+        KlotskiGame.KlotskiPiece piece = game.getPiece(selectedBlock.pieceId);
+        int fromRow = piece.getRow();
+        int fromCol = piece.getCol();
+        int toRow = fromRow + direction[0];
+        int toCol = fromCol + direction[1];
+
+        if (!game.isLegalMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol })) return;
+
+        float targetX = toCol * cellSize;
+        float targetY = (rows - toRow - piece.height) * cellSize;
+
+        game.applyAction(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+        piece.setPosition(new int[] { toRow, toCol });
+        recordMove(new int[] { fromRow, fromCol }, new int[] { toRow, toCol });
+        isTerminal = game.isTerminal();
+        broadcastGameState();
+
+        selectedBlock.addAction(Actions.moveTo(targetX, targetY, 0.1f));
     }
 
     // Helper method to assign colors to pieces
@@ -1050,7 +1138,7 @@ public class GameScreen extends ApplicationAdapter implements Screen {
             }
         });
     }
-    
+
     private void handleLocalSave() {
         // TODO: refactor to math the online method
         String saveFileName = getSaveFileName();
